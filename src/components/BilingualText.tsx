@@ -47,3 +47,4 @@ export const BilingualText: React.FC<BilingualTextProps> = ({
     </span>
   );
 };
+

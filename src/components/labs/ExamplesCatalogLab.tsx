@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ALL_EXAMPLES } from '../../content/examples';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { Molecule3DViewer } from '../3d/Molecule3DViewer';
 import { BilingualText } from '../BilingualText';
-import { Search, Filter, Layers, Eye, ChevronRight, BookOpen, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Search, Filter, Layers, Eye, ChevronRight, BookOpen, Bookmark, BookmarkCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { IsomerismCategory } from '../../types/isomerism';
 
@@ -15,6 +15,22 @@ export const ExamplesCatalogLab: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'catalog' | 'viewer'>('catalog');
   const [spaceFilling, setSpaceFilling] = useState(false);
   const [showDipole, setShowDipole] = useState(true);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const [isViewerFs, setIsViewerFs] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsViewerFs(document.fullscreenElement === viewerRef.current);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  const toggleViewerFs = async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (viewerRef.current?.requestFullscreen) {
+      await viewerRef.current.requestFullscreen();
+    }
+  };
 
   const { bookmarkedExamples, toggleBookmark } = useStore();
 
@@ -152,9 +168,10 @@ export const ExamplesCatalogLab: React.FC = () => {
 
         {/* Right Area: Full Interactive 3D Model Inspector */}
         <div
+          ref={viewerRef}
           className={`${
             mobileTab === 'viewer' ? 'flex' : 'hidden lg:flex'
-          } flex-col rounded-2xl border border-[rgba(70,227,255,0.18)] bg-[rgba(8,19,30,0.85)] p-4 shadow-xl backdrop-blur-xl h-full max-h-[700px] overflow-hidden`}
+          } ${isViewerFs ? 'fixed inset-0 z-50 p-6 bg-[#06101d]' : 'rounded-2xl border border-[rgba(70,227,255,0.18)] bg-[rgba(8,19,30,0.85)] p-4 shadow-xl backdrop-blur-xl h-full max-h-[700px]'} flex-col overflow-hidden`}
         >
           {/* Header Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-3">
@@ -172,6 +189,15 @@ export const ExamplesCatalogLab: React.FC = () => {
 
             {/* Controls */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleViewerFs}
+                className="p-2 rounded-xl border border-cyan-500/30 bg-slate-900 text-cyan-300 hover:text-white hover:bg-cyan-500/20 transition-all cursor-pointer"
+                title={isViewerFs ? 'Exit Fullscreen' : 'Fullscreen 3D Viewer'}
+              >
+                {isViewerFs ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+
               <button
                 type="button"
                 onClick={() => toggleBookmark(currentExample.id)}
@@ -258,3 +284,4 @@ export const ExamplesCatalogLab: React.FC = () => {
     </div>
   );
 };
+

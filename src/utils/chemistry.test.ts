@@ -64,3 +64,4 @@ describe('Stereochemistry Utilities', () => {
     expect(compareCIPAtoms({ element: 'D' }, { element: 'H' })).toBeGreaterThan(0);
   });
 });
+

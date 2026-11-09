@@ -11,3 +11,4 @@ export const Progress: React.FC = () => {
     </div>
   );
 };
+

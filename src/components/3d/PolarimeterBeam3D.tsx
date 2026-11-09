@@ -141,3 +141,4 @@ export const PolarimeterBeam3D: React.FC<PolarimeterBeam3DProps> = ({
     </group>
   );
 };
+

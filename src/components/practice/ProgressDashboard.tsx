@@ -143,3 +143,4 @@ export const ProgressDashboard: React.FC = () => {
     </div>
   );
 };
+

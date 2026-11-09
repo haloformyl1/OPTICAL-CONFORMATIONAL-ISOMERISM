@@ -12,7 +12,7 @@ export const HeroStereoAnimation: React.FC = () => {
   const [viewMode, setViewMode] = useState<'perspective' | 'newman'>('perspective');
 
   return (
-    <div className="relative h-[340px] sm:h-[420px] lg:h-[480px] w-full rounded-3xl border border-[rgba(70,227,255,0.22)] bg-gradient-to-b from-[#08182b] to-[#040d1a] shadow-2xl backdrop-blur-2xl overflow-hidden">
+    <div className="relative h-full min-h-[360px] sm:min-h-[440px] lg:min-h-[520px] w-full overflow-hidden">
       {/* 3D Canvas */}
       <MolecularCanvas cameraPosition={viewMode === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}>
         <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.3}>
@@ -21,8 +21,8 @@ export const HeroStereoAnimation: React.FC = () => {
       </MolecularCanvas>
 
       {/* Floating Interactive Controls */}
-      <div className="absolute bottom-4 inset-x-4 flex flex-wrap items-center justify-between gap-2 z-10">
-        <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900/90 p-1 backdrop-blur-md">
+      <div className="absolute bottom-4 left-4 right-18 flex flex-wrap items-center justify-between gap-2 z-10 pointer-events-none">
+        <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900/90 p-1 backdrop-blur-md pointer-events-auto">
           <button
             type="button"
             onClick={() => setAngle(180)}
@@ -55,7 +55,7 @@ export const HeroStereoAnimation: React.FC = () => {
         <button
           type="button"
           onClick={() => setViewMode(viewMode === 'perspective' ? 'newman' : 'perspective')}
-          className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 backdrop-blur-md cursor-pointer"
+          className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 backdrop-blur-md cursor-pointer pointer-events-auto"
         >
           <Compass className="h-3.5 w-3.5" />
           <span>{viewMode === 'perspective' ? 'Newman Projection' : '3D View'}</span>
@@ -64,3 +64,4 @@ export const HeroStereoAnimation: React.FC = () => {
     </div>
   );
 };
+

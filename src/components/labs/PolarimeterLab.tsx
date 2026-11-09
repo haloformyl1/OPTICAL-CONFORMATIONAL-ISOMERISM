@@ -176,3 +176,4 @@ export const PolarimeterLab: React.FC = () => {
     </div>
   );
 };
+

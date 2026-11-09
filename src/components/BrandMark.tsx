@@ -154,3 +154,4 @@ export const BrandMark: React.FC<BrandMarkProps> = ({
     </span>
   );
 };
+

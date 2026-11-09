@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { Molecule3DViewer } from '../3d/Molecule3DViewer';
 import { BilingualText } from '../BilingualText';
 import { EXCEPTIONAL_CASES } from '../../content/examples/exceptionalCases';
-import { Flame, Eye, EyeOff, Layers, ShieldAlert, Sparkles, ChevronRight } from 'lucide-react';
+import { Flame, Eye, EyeOff, Layers, ShieldAlert, Sparkles, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 
 export const ExceptionalCasesLab: React.FC = () => {
   const [filterTopic, setFilterTopic] = useState<'all' | 'optical' | 'conformational'>('all');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [activeIsomer, setActiveIsomer] = useState<'A' | 'B'>('A');
   const [spaceFilling, setSpaceFilling] = useState<boolean>(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(document.fullscreenElement === rootRef.current);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (rootRef.current?.requestFullscreen) {
+      await rootRef.current.requestFullscreen();
+    }
+  };
 
   const filteredCases = EXCEPTIONAL_CASES.filter((c) => {
     if (filterTopic === 'optical') return c.id.startsWith('exc-opt');
@@ -21,7 +37,12 @@ export const ExceptionalCasesLab: React.FC = () => {
   const activeStructure = activeIsomer === 'A' ? currentCase.isomerA.structure : currentCase.isomerB.structure;
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
+    <div
+      ref={rootRef}
+      className={`flex flex-col h-full w-full overflow-hidden ${
+        isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-6 bg-[#06101d]' : 'bg-transparent'
+      }`}
+    >
       {/* Top Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 sm:p-4 backdrop-blur-md">
         <div className="flex items-center gap-2">
@@ -98,6 +119,16 @@ export const ExceptionalCasesLab: React.FC = () => {
           >
             <Layers className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Space-Filling</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:text-white hover:bg-cyan-500/20 transition-all cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Laboratory'}
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit' : 'Full Screen'}</span>
           </button>
         </div>
       </div>
@@ -192,3 +223,4 @@ export const ExceptionalCasesLab: React.FC = () => {
     </div>
   );
 };
+

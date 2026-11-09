@@ -121,8 +121,8 @@ export const FullscreenInteractiveFrame: React.FC<FullscreenInteractiveFrameProp
           <button type="button" onClick={() => setHelpOpen((open) => !open)} className="icon-button hidden sm:inline-flex" title="Interaction help" aria-label="Show interaction help" aria-expanded={helpOpen}>
             <HelpCircle className="h-4.5 w-4.5" aria-hidden="true" />
           </button>
-          <button ref={fullscreenButtonRef} type="button" onClick={toggleFullscreen} className="icon-button" title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
-            {isFullscreen ? <Minimize2 className="h-4.5 w-4.5" /> : <Maximize2 className="h-4.5 w-4.5" />}
+          <button ref={fullscreenButtonRef} type="button" onClick={toggleFullscreen} className="icon-button hover:border-cyan-400 hover:text-cyan-200" title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+            {isFullscreen ? <Minimize2 className="h-5 w-5 text-cyan-300" /> : <Maximize2 className="h-5 w-5 text-cyan-300" />}
           </button>
         </div>
       </div>

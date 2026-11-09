@@ -343,7 +343,8 @@
     z-index: 30;
   }
 
-  .lab-frame[data-fullscreen="true"] {
+  .lab-frame[data-fullscreen="true"],
+  .lab-frame:fullscreen {
     width: 100vw;
     height: 100dvh;
     min-height: 100dvh;
@@ -352,11 +353,14 @@
     background: var(--canvas-background);
   }
 
-  .lab-frame[data-fullscreen="true"] .lab-frame-content {
+  .lab-frame[data-fullscreen="true"] .lab-frame-content,
+  .lab-frame:fullscreen .lab-frame-content {
     overflow: hidden;
+    height: calc(100% - 50px);
   }
 
-  .lab-frame[data-fullscreen="true"] .lab-frame-content > * {
+  .lab-frame[data-fullscreen="true"] .lab-frame-content > *,
+  .lab-frame:fullscreen .lab-frame-content > * {
     height: 100%;
     min-height: 0 !important;
   }

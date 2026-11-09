@@ -70,3 +70,4 @@ export const MODULE_00: ModuleContent = {
     }
   ]
 };
+

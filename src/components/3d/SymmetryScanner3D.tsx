@@ -87,3 +87,4 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
     </group>
   );
 };
+

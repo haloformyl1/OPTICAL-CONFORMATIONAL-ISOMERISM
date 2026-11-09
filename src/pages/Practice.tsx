@@ -11,3 +11,4 @@ export const Practice: React.FC = () => {
     </div>
   );
 };
+

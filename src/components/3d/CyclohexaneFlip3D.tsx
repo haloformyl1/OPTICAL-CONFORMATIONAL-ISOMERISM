@@ -221,3 +221,4 @@ export const CyclohexaneFlip3D: React.FC<CyclohexaneFlip3DProps> = ({
     </group>
   );
 };
+

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Orbit, Sparkles, BookOpen, Layers, CheckCircle2, FlaskConical, Flame, Compass } from 'lucide-react';
 import { HeroStereoAnimation } from '../components/3d/HeroStereoAnimation';
 import { BilingualText } from '../components/BilingualText';
+import { FullscreenInteractiveFrame } from '../components/ui/FullscreenInteractiveFrame';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -82,9 +83,19 @@ export const Home: React.FC = () => {
 
         {/* Right Hero 3D Animation */}
         <div className="w-full">
-          <HeroStereoAnimation />
+          <FullscreenInteractiveFrame
+            title={
+              <BilingualText
+                en="Interactive 3D Rotamer & Newman Simulator"
+                bn="ইন্টারেক্টিভ ৩ডি রোটার ও নিউম্যান সিমুলেটর"
+              />
+            }
+          >
+            <HeroStereoAnimation />
+          </FullscreenInteractiveFrame>
         </div>
       </section>
     </div>
   );
 };
+

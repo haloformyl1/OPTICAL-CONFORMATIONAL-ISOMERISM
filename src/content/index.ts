@@ -20,3 +20,4 @@ export const ALL_MODULES: ModuleContent[] = [
 export const getModuleById = (id: string): ModuleContent | undefined => {
   return ALL_MODULES.find((m) => m.id === id);
 };
+

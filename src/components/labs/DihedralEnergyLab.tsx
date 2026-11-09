@@ -334,3 +334,4 @@ export const DihedralEnergyLab: React.FC = () => {
     </div>
   );
 };
+

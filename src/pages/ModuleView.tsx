@@ -4,6 +4,7 @@ import { getModuleById, ALL_MODULES } from '../content';
 import { BilingualText } from '../components/BilingualText';
 import { useStore } from '../store/useStore';
 import { ArrowLeft, CheckCircle, Target, Sparkles, ChevronRight, Info } from 'lucide-react';
+import { FullscreenInteractiveFrame } from '../components/ui/FullscreenInteractiveFrame';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
@@ -92,16 +93,10 @@ export const ModuleView: React.FC = () => {
         </div>
 
         {/* Embedded Interactive 3D Lab Widget */}
-        <div className="rounded-3xl border border-[rgba(70,227,255,0.22)] bg-[rgba(8,19,30,0.85)] p-4 sm:p-6 shadow-2xl backdrop-blur-xl">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-            <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4" />
-              <span>Interactive 3D Laboratory</span>
-            </span>
-            <span className="text-xs text-slate-400">Real-time simulation</span>
-          </div>
-
-          <div className="h-[520px] rounded-2xl overflow-hidden border border-slate-800">
+        <FullscreenInteractiveFrame
+          title={<BilingualText en={moduleData.title.en} bn={moduleData.title.bn} />}
+        >
+          <div className="h-[520px] w-full overflow-hidden">
             {moduleData.id === '00-symmetry-chirality' && <SymmetryScannerLab />}
             {moduleData.id === '01-enantiomers-diastereomers' && <EnantiomerCompareLab />}
             {moduleData.id === '02-cip-rs-system' && <CIPPriorityLab />}
@@ -110,7 +105,7 @@ export const ModuleView: React.FC = () => {
             {moduleData.id === '05-exceptional-optical' && <ExceptionalCasesLab />}
             {moduleData.id === '06-exceptional-conformational' && <ExceptionalCasesLab />}
           </div>
-        </div>
+        </FullscreenInteractiveFrame>
 
         {/* In-Depth Theory Sections */}
         <div className="space-y-8">

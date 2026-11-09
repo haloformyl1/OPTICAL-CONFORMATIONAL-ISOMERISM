@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, forwardRef } from 'react';
 import { Canvas, type CanvasProps } from '@react-three/fiber';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import * as THREE from 'three';
 
 interface AppCanvasProps extends CanvasProps {
@@ -17,6 +17,39 @@ export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
     const [isNearViewport, setIsNearViewport] = useState(false);
     const [hasBeenVisible, setHasBeenVisible] = useState(false);
     const [isDocumentVisible, setIsDocumentVisible] = useState(true);
+    const [canvasFullscreen, setCanvasFullscreen] = useState(false);
+
+    useEffect(() => {
+      const handleFsChange = () => {
+        const isFs = Boolean(
+          document.fullscreenElement &&
+            (document.fullscreenElement === containerRef.current ||
+              containerRef.current?.contains(document.fullscreenElement) ||
+              document.fullscreenElement.contains(containerRef.current!))
+        );
+        setCanvasFullscreen(isFs);
+      };
+      document.addEventListener('fullscreenchange', handleFsChange);
+      return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    }, []);
+
+    const toggleCanvasFullscreen = async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          const host =
+            (containerRef.current?.closest('.lab-frame') as HTMLElement) ||
+            (containerRef.current?.closest('[data-fullscreen-host]') as HTMLElement) ||
+            containerRef.current;
+          if (host?.requestFullscreen) {
+            await host.requestFullscreen();
+          }
+        }
+      } catch (err) {
+        console.warn('Canvas fullscreen failed', err);
+      }
+    };
 
     useEffect(() => {
       const container = containerRef.current;
@@ -130,6 +163,15 @@ export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
               title="Reset View"
             >
               <RotateCcw className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleCanvasFullscreen}
+              className="grid h-10 w-10 place-items-center rounded-lg border border-cyan-400/40 bg-slate-900/80 text-cyan-300 shadow-lg backdrop-blur-md transition-colors hover:bg-cyan-500/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer"
+              aria-label={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
+              title={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
+            >
+              {canvasFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
             </button>
           </div>
         )}

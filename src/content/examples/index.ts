@@ -18,3 +18,4 @@ export const getExamplesByCategory = (category: IsomerismCategory | 'all'): Ster
   if (category === 'exception') return EXCEPTIONAL_CASES;
   return ALL_EXAMPLES;
 };
+
