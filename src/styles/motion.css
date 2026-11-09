@@ -1,0 +1,46 @@
+@layer utilities {
+  @keyframes crystal-enter {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes crystal-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-primary) 0%, transparent); }
+    50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+  }
+
+  .animate-fade-in-up,
+  .animate-fade-in-down {
+    animation: crystal-enter var(--duration-slow) var(--ease-emphasized) both;
+  }
+
+  .interactive-transition {
+    transition: color var(--duration-normal) var(--ease-standard),
+      background-color var(--duration-normal) var(--ease-standard),
+      border-color var(--duration-normal) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .interactive-transition:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  html[data-reduced-motion="true"] *,
+  html[data-reduced-motion="true"] *::before,
+  html[data-reduced-motion="true"] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}

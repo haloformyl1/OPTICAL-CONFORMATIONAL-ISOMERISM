@@ -1,0 +1,63 @@
+@layer base {
+  :root,
+  .dark,
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    /* BondLab-inspired Deep Midnight Theme */
+    --page-background: #06101d;
+    --page-background-secondary: #0a1730;
+    --surface-primary: #0d2038;
+    --surface-secondary: #0f2642;
+    --surface-elevated: #132f50;
+    --surface-interactive: #16375d;
+
+    --text-primary: #edf8ff;
+    --text-secondary: #a9bfd2;
+    --text-muted: #789bb7;
+    --text-inverse: #03101c;
+    --button-primary-text: #03101c;
+
+    --accent-primary: #46e3ff;
+    --accent-primary-strong: #7feaff;
+    --accent-secondary: #5ce6a1;
+    --accent-violet: #aa7bff;
+    --accent-amber: #ffc75a;
+
+    --border-default: rgba(165, 214, 255, 0.16);
+    --border-strong: rgba(165, 214, 255, 0.28);
+    --border-interactive: #46e3ff;
+
+    --success: #5ce6a1;
+    --warning: #ffc75a;
+    --error: #ff7c8c;
+    --information: #46e3ff;
+
+    --focus-ring: rgba(70, 227, 255, 0.52);
+    --selected-state: rgba(70, 227, 255, 0.14);
+    --hover-state: rgba(70, 227, 255, 0.08);
+    --disabled-state: rgba(169, 191, 210, 0.12);
+    --scrim: rgba(3, 16, 28, 0.82);
+
+    --canvas-background: #050e1a;
+    --canvas-surface: #081a2e;
+    --canvas-grid: rgba(70, 227, 255, 0.08);
+    --formula-background: #0d2038;
+    --narration-background: #092238;
+    --header-background: rgba(8, 19, 30, 0.92);
+
+    --shadow-low: 0 10px 24px rgba(0, 0, 0, 0.18);
+    --shadow-medium: 0 20px 60px rgba(0, 0, 0, 0.28);
+    --shadow-interactive: 0 20px 54px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(70, 227, 255, 0.18);
+    --shadow-modal: 0 28px 80px rgba(0, 0, 0, 0.65);
+
+    --atom-a: #46e3ff;
+    --atom-b: #5ce6a1;
+    --atom-c: #aa7bff;
+    --atom-selected: #ffc75a;
+    --atom-neighbor: #7feaff;
+    --void-tetra: #aa7bff;
+    --void-octa: #5ce6a1;
+    --lattice-boundary: #46e3ff;
+  }
+}

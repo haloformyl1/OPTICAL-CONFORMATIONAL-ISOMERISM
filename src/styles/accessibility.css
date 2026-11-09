@@ -1,0 +1,39 @@
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--accent-primary);
+    color: var(--button-primary-text);
+  }
+
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:disabled, input:disabled, select:disabled {
+    cursor: not-allowed;
+  }
+
+  .skip-link {
+    position: fixed;
+    left: var(--space-4);
+    top: var(--space-4);
+    z-index: 9999;
+    transform: translateY(-160%);
+    border-radius: var(--radius-sm);
+    background: var(--accent-primary);
+    color: var(--button-primary-text);
+    padding: 10px 16px;
+    font-weight: 700;
+    box-shadow: var(--shadow-modal);
+  }
+
+  .skip-link:focus { transform: translateY(0); }
+
+  @media (forced-colors: active) {
+    .surface-panel, .lab-frame, button, a { border: 1px solid ButtonText; }
+  }
+}

@@ -1,0 +1,76 @@
+@layer base {
+  :root {
+    /* Crystal Learning Studio spacing */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+
+    /* Restrained geometry */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-interactive: 20px;
+    --radius-full: 9999px;
+
+    /* Type scale */
+    --type-display-lg: clamp(1.85rem, 5vw + 0.5rem, 4.75rem);
+    --type-display-md: clamp(1.55rem, 4vw + 0.4rem, 3.75rem);
+    --type-page-title: clamp(1.35rem, 3.2vw + 0.4rem, 3rem);
+    --type-section-title: clamp(1.15rem, 2vw + 0.35rem, 1.85rem);
+    --type-card-title: 1.125rem;
+    --type-body-lg: clamp(0.95rem, 1vw + 0.65rem, 1.125rem);
+    --type-body: 1rem;
+    --type-body-sm: 0.875rem;
+    --type-caption: 0.75rem;
+    --type-label: 0.8125rem;
+    --type-button: 0.9375rem;
+    --type-formula: clamp(1.1rem, 2vw, 1.75rem);
+
+    /* Layout */
+    --header-height-mobile: 60px;
+    --header-height-desktop: 72px;
+    --page-max: 1720px;
+    --reading-max: 82ch;
+    --control-size: 44px;
+
+    /* Motion */
+    --duration-fast: 140ms;
+    --duration-normal: 220ms;
+    --duration-slow: 420ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    /* Compatibility aliases for existing scientific components. */
+    --bg-main: var(--page-background);
+    --bg-sec: var(--page-background-secondary);
+    --bg-canvas: var(--canvas-background);
+    --surf-elev: var(--surface-elevated);
+    --text-h: var(--text-primary);
+    --text-str: var(--text-primary);
+    --text-norm: var(--text-secondary);
+    --text-mut: var(--text-muted);
+    --border: var(--border-default);
+    --border-sub: var(--border-default);
+    --border-str: var(--border-strong);
+    --acc-prim: var(--accent-primary);
+    --acc-sec: var(--accent-secondary);
+    --acc-viol: var(--accent-violet);
+    --acc-amb: var(--accent-amber);
+    --stat-succ: var(--success);
+    --stat-warn: var(--warning);
+    --stat-err: var(--error);
+    --accent: var(--accent-primary);
+    --accent-bg: var(--selected-state);
+    --accent-border: var(--border-interactive);
+    --shadow: var(--shadow-low);
+    --social-bg: var(--surface-secondary);
+  }
+}

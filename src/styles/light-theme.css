@@ -1,0 +1,62 @@
+@layer base {
+  :root,
+  .dark,
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    --page-background: #06131d;
+    --page-background-secondary: #0a1d29;
+    --surface-primary: #102736;
+    --surface-secondary: #143143;
+    --surface-elevated: #193b4f;
+    --surface-interactive: #173648;
+
+    --text-primary: #f1f7fa;
+    --text-secondary: #c5d8e4;
+    --text-muted: #94adbc;
+    --text-inverse: #06131d;
+    --button-primary-text: #04131d;
+
+    --accent-primary: #38bdf8;
+    --accent-primary-strong: #7dd3fc;
+    --accent-secondary: #2dd4bf;
+    --accent-violet: #a38aff;
+    --accent-amber: #fbbf24;
+
+    --border-default: #29495c;
+    --border-strong: #527589;
+    --border-interactive: #38bdf8;
+
+    --success: #55d799;
+    --warning: #f5c35a;
+    --error: #f58b95;
+    --information: #67cafa;
+
+    --focus-ring: rgba(56, 189, 248, 0.52);
+    --selected-state: rgba(56, 189, 248, 0.14);
+    --hover-state: rgba(125, 211, 252, 0.09);
+    --disabled-state: rgba(142, 168, 184, 0.12);
+    --scrim: rgba(1, 8, 13, 0.76);
+
+    --canvas-background: #030d14;
+    --canvas-surface: #071923;
+    --canvas-grid: rgba(103, 202, 250, 0.07);
+    --formula-background: #171f3b;
+    --narration-background: #0c302f;
+    --header-background: rgba(10, 29, 41, 0.94);
+
+    --shadow-low: 0 1px 2px rgba(0, 0, 0, 0.24), 0 10px 24px rgba(0, 0, 0, 0.12);
+    --shadow-medium: 0 14px 38px rgba(0, 0, 0, 0.28);
+    --shadow-interactive: 0 20px 54px rgba(2, 8, 13, 0.42), 0 0 0 1px rgba(56, 189, 248, 0.05);
+    --shadow-modal: 0 28px 80px rgba(0, 0, 0, 0.55);
+
+    --atom-a: #38bdf8;
+    --atom-b: #2dd4bf;
+    --atom-c: #a38aff;
+    --atom-selected: #fbbf24;
+    --atom-neighbor: #67e8f9;
+    --void-tetra: #a38aff;
+    --void-octa: #2dd4bf;
+    --lattice-boundary: #4fc3f7;
+  }
+}

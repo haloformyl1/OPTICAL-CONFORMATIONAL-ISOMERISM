@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Opening PIECHEM Stereochemistry Studio…</title>
+  </head>
+  <body>
+    <p>Opening PIECHEM Geometrical Isomerism Studio…</p>
+    <script>
+      const base = '/GEOMETRICAL-ISOMERISM/';
+      const path = window.location.pathname.startsWith(base)
+        ? window.location.pathname.slice(base.length)
+        : '';
+      const route = path + window.location.search + window.location.hash;
+      window.location.replace(base + '?route=' + encodeURIComponent(route));
+    </script>
+  </body>
+</html>

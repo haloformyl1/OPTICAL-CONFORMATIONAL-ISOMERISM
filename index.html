@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" class="dark" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PIECHEM Stereochemistry Studio — Interactive bilingual learning platform for Optical & Conformational Isomerism." />
+    <meta name="theme-color" content="#06131D" />
+    <title>PIECHEM | Optical & Conformational Isomerism</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      try {
+        const redirect = new URLSearchParams(window.location.search).get('route');
+        if (redirect) window.history.replaceState(null, '', './' + redirect);
+        document.documentElement.classList.add('dark');
+        document.documentElement.dataset.theme = 'dark';
+        const stored = JSON.parse(localStorage.getItem('optical-conformational-storage') || '{}');
+        if (stored?.state) {
+          stored.state.theme = 'dark';
+          localStorage.setItem('optical-conformational-storage', JSON.stringify(stored));
+        }
+      } catch {}
+    </script>
+  </head>
+  <body class="bg-[#06131d] text-[#f1f7fa]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
