@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Sphere, Cylinder, Text } from '@react-three/drei';
+import { Sphere, Cylinder, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MolecularStructure3D, Atom3D, Bond3D } from '../../types/isomerism';
 import { getElementColor, getElementRadius } from '../../utils/chemistry';
@@ -49,6 +49,14 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
     return map;
   }, [structure]);
 
+  const centroid = useMemo(() => {
+    const c = new THREE.Vector3(0, 0, 0);
+    if (!structure.atoms.length) return c;
+    structure.atoms.forEach((a) => c.add(new THREE.Vector3(...a.position)));
+    c.divideScalar(structure.atoms.length);
+    return c;
+  }, [structure]);
+
   return (
     <group>
       {/* 3D Atoms */}
@@ -62,15 +70,34 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
           color = atom.conformationType === 'axial' ? '#f59e0b' : '#06b6d4'; // Amber for axial, Cyan for equatorial
         }
 
+        // Compute radial outward label position to eliminate overlaps
+        const posVec = new THREE.Vector3(...atom.position);
+        const dir = posVec.clone().sub(centroid);
+        const isCentral = atom.element === 'C' && atom.isStereocenter;
+        let labelOffset: [number, number, number];
+
+        if (isCentral) {
+          // Stereocenter carbon: offset to the side and slightly forward
+          labelOffset = [-baseRadius - 0.28, 0.05, 0.22];
+        } else {
+          if (dir.lengthSq() < 0.001) {
+            dir.set(0, 1, 0);
+          } else {
+            dir.normalize();
+          }
+          const dist = baseRadius + 0.32;
+          labelOffset = [dir.x * dist, dir.y * dist, dir.z * dist];
+        }
+
         return (
           <group key={atom.id} position={atom.position}>
-            {/* Stereocenter aura halo */}
+            {/* Stereocenter subtle aura halo */}
             {atom.isStereocenter && (
-              <Sphere args={[baseRadius * 1.45, 16, 16]}>
+              <Sphere args={[baseRadius * 1.25, 16, 16]}>
                 <meshStandardMaterial
-                  color="#a855f7"
+                  color="#c084fc"
                   transparent
-                  opacity={0.3}
+                  opacity={0.15}
                   wireframe
                 />
               </Sphere>
@@ -85,63 +112,74 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
               />
             </Sphere>
 
-            {/* Element or Group Label */}
-            {showLabels && !spaceFilling && (
-              <Text
-                position={[0, baseRadius + 0.22, 0]}
-                fontSize={0.24}
-                color="#f8fafc"
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.03}
-                outlineColor="#020617"
-              >
-                {atom.label || atom.element}
-              </Text>
-            )}
+            {/* Clean Billboard Label & Non-Overlapping Priority Badge */}
+            {(showLabels || (showPriorityBadges && atom.cipPriority)) && !spaceFilling && (
+              <Billboard position={labelOffset} follow={true}>
+                <group>
+                  {/* CIP Priority Badge Pill */}
+                  {showPriorityBadges && atom.cipPriority && (
+                    <group position={showLabels ? [-0.26, 0, 0] : [0, 0, 0]}>
+                      <mesh>
+                        <circleGeometry args={[0.13, 24]} />
+                        <meshBasicMaterial
+                          color={
+                            atom.cipPriority === 1
+                              ? '#ef4444'
+                              : atom.cipPriority === 2
+                              ? '#f59e0b'
+                              : atom.cipPriority === 3
+                              ? '#3b82f6'
+                              : '#10b981'
+                          }
+                        />
+                      </mesh>
+                      <Text
+                        position={[0, 0, 0.01]}
+                        fontSize={0.16}
+                        color="#ffffff"
+                        anchorX="center"
+                        anchorY="middle"
+                        fontWeight="bold"
+                      >
+                        {atom.cipPriority}
+                      </Text>
+                    </group>
+                  )}
 
-            {/* CIP Priority Badge (1, 2, 3, 4) */}
-            {showPriorityBadges && atom.cipPriority && (
-              <group position={[0.22, 0.22, 0.2]}>
-                <Sphere args={[0.16, 16, 16]}>
-                  <meshBasicMaterial
-                    color={
-                      atom.cipPriority === 1
-                        ? '#ef4444'
-                        : atom.cipPriority === 2
-                        ? '#f59e0b'
-                        : atom.cipPriority === 3
-                        ? '#3b82f6'
-                        : '#10b981'
-                    }
-                  />
-                </Sphere>
-                <Text
-                  position={[0, 0, 0.17]}
-                  fontSize={0.2}
-                  color="#ffffff"
-                  anchorX="center"
-                  anchorY="middle"
-                  fontWeight="bold"
-                >
-                  {atom.cipPriority}
-                </Text>
-              </group>
+                  {/* Element or Group Label */}
+                  {showLabels && (
+                    <Text
+                      position={[showPriorityBadges && atom.cipPriority ? 0.12 : 0, 0, 0]}
+                      fontSize={0.22}
+                      color={isCentral ? '#c084fc' : '#f8fafc'}
+                      anchorX={showPriorityBadges && atom.cipPriority ? 'left' : 'center'}
+                      anchorY="middle"
+                      outlineWidth={0.035}
+                      outlineColor="#020617"
+                      fontWeight="bold"
+                    >
+                      {atom.label || atom.element}
+                    </Text>
+                  )}
+                </group>
+              </Billboard>
             )}
 
             {/* Axial / Equatorial Tag */}
             {highlightConformation && atom.conformationType && (
-              <Text
-                position={[0, -baseRadius - 0.22, 0]}
-                fontSize={0.18}
-                color={atom.conformationType === 'axial' ? '#fcd34d' : '#67e8f9'}
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.02}
-                outlineColor="#020617"
-              >
-                {atom.conformationType === 'axial' ? 'ax' : 'eq'}
-              </Text>
+              <Billboard position={[0, -baseRadius - 0.25, 0]} follow={true}>
+                <Text
+                  fontSize={0.18}
+                  color={atom.conformationType === 'axial' ? '#fcd34d' : '#67e8f9'}
+                  anchorX="center"
+                  anchorY="middle"
+                  outlineWidth={0.03}
+                  outlineColor="#020617"
+                  fontWeight="bold"
+                >
+                  {atom.conformationType === 'axial' ? 'ax' : 'eq'}
+                </Text>
+              </Billboard>
             )}
           </group>
         );
