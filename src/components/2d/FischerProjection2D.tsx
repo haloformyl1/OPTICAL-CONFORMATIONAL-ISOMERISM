@@ -144,10 +144,10 @@ export const FISCHER_PAIRS_DATA: Record<number, FischerMoleculeData> = {
 };
 
 interface FischerProjection2DProps {
-  pairIndex: number;
+  pairIndex?: number;
 }
 
-export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIndex }) => {
+export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIndex = 1 }) => {
   const [showWedgeDash, setShowWedgeDash] = useState(false);
   const [rotated180B, setRotated180B] = useState(false);
   const [superimposeX, setSuperimposeX] = useState(0); // 0 (separated) to 1 (full overlay)
@@ -520,3 +520,4 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
     </div>
   );
 };
+

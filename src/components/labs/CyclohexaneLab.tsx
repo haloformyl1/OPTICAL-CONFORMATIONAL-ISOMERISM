@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { CyclohexaneFlip3D, type CyclohexaneForm } from '../3d/CyclohexaneFlip3D';
+import { CyclohexaneChair2D } from '../2d/CyclohexaneChair2D';
 import { BilingualText } from '../BilingualText';
-import { Play, RotateCcw, AlertTriangle, ShieldCheck, Flame, Info } from 'lucide-react';
+import { Play, Pause, RotateCcw, AlertTriangle, ShieldCheck, Flame, Info, Eye, Layers } from 'lucide-react';
 
 const conformationSteps: Array<{
   id: CyclohexaneForm;
@@ -58,8 +59,19 @@ export const CyclohexaneLab: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [substituent, setSubstituent] = useState<'H' | 'CH3' | 't-Bu'>('CH3');
   const [show13Diaxial, setShow13Diaxial] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const activeConf = conformationSteps[currentStep];
+
+  // Auto-play stepper animation
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % conformationSteps.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   return (
     <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
@@ -82,8 +94,45 @@ export const CyclohexaneLab: React.FC = () => {
           </select>
         </div>
 
-        {/* 1,3-Diaxial Interaction Toggle */}
+        {/* View Mode Switcher: 3D, 2D Chair, Split */}
         <div className="flex items-center gap-2">
+          <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setViewMode('3d')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === '3d'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3D Model
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('2d')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === '2d'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2D Chair &amp; Haworth
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === 'split'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Split (2D + 3D)
+            </button>
+          </div>
+
+          {/* 1,3-Diaxial Interaction Toggle */}
           <button
             type="button"
             onClick={() => setShow13Diaxial(!show13Diaxial)}
@@ -94,44 +143,71 @@ export const CyclohexaneLab: React.FC = () => {
             }`}
           >
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>1,3-Diaxial Strain</span>
+            <span className="hidden sm:inline">1,3-Diaxial Strain</span>
           </button>
         </div>
       </div>
 
       {/* Main Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] flex-1 min-h-[460px] lg:min-h-[520px]">
-        {/* 3D Visualizer Canvas */}
-        <div className="relative h-full w-full min-h-[300px] bg-gradient-to-b from-[#05111e] to-[#08182b]">
-          <MolecularCanvas cameraPosition={[0, 1.8, 5.0]}>
-            <CyclohexaneFlip3D
-              form={activeConf.id}
-              substituent={substituent}
-              show13Diaxial={show13Diaxial}
-            />
-          </MolecularCanvas>
+        {/* Visualizer Area */}
+        <div className="relative h-full w-full min-h-[340px] bg-gradient-to-b from-[#05111e] to-[#08182b] flex overflow-hidden">
+          {/* 3D Visualizer Canvas (shown in '3d' or 'split') */}
+          {(viewMode === '3d' || viewMode === 'split') && (
+            <div className={`relative h-full ${viewMode === 'split' ? 'w-full lg:w-1/2 border-r border-slate-800' : 'w-full'}`}>
+              <MolecularCanvas cameraPosition={[0, 1.8, 5.0]}>
+                <CyclohexaneFlip3D
+                  form={activeConf.id}
+                  substituent={substituent}
+                  show13Diaxial={show13Diaxial}
+                />
+              </MolecularCanvas>
 
-          {/* Step Pill */}
-          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
-            <div className="rounded-xl border border-cyan-500/30 bg-slate-900/90 p-3 backdrop-blur-md shadow-lg max-w-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                Step {currentStep + 1} of 5
-              </span>
-              <h4 className="text-sm font-bold text-white mt-0.5">{activeConf.nameEn}</h4>
-              <p className="text-xs text-amber-300 font-mono font-semibold mt-1">
-                Relative Energy: +{activeConf.energyKJ} kJ/mol
-              </p>
-              <p className="text-[11px] text-slate-300 mt-1 leading-snug">{activeConf.descriptionEn}</p>
+              {/* Step Pill */}
+              <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
+                <div className="rounded-xl border border-cyan-500/30 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-lg max-w-[240px]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                    Step {currentStep + 1} of 5
+                  </span>
+                  <h4 className="text-xs font-bold text-white mt-0.5">{activeConf.nameEn}</h4>
+                  <p className="text-[11px] text-amber-300 font-mono font-semibold">
+                    +{activeConf.energyKJ} kJ/mol
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 2D Chair Skeleton & Haworth (shown in '2d' or 'split') */}
+          {(viewMode === '2d' || viewMode === 'split') && (
+            <div className={`h-full ${viewMode === 'split' ? 'w-full lg:w-1/2' : 'w-full'} overflow-y-auto`}>
+              <CyclohexaneChair2D
+                substituent={substituent}
+                flipProgress={currentStep === 4 ? 1 : 0}
+                onFlipToggle={() => setCurrentStep((c) => (c === 0 ? 4 : 0))}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Column: Step Sequencer & Conformational Energy Barrier */}
         <div className="flex flex-col border-t lg:border-t-0 lg:border-l border-[rgba(70,227,255,0.14)] bg-[#071524]/90 p-4 overflow-y-auto">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-1.5">
-            <Flame className="h-4 w-4" />
-            <span>Chair-Chair Ring Flip Trajectory</span>
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+              <Flame className="h-4 w-4" />
+              <span>Ring Flip Trajectory</span>
+            </h3>
+
+            {/* Play/Pause Button */}
+            <button
+              type="button"
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 cursor-pointer"
+            >
+              {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              <span>{isPlaying ? 'Pause' : 'Auto Play'}</span>
+            </button>
+          </div>
 
           {/* Stepper Buttons */}
           <div className="flex flex-col gap-2 mb-4">
@@ -139,7 +215,10 @@ export const CyclohexaneLab: React.FC = () => {
               <button
                 key={step.id}
                 type="button"
-                onClick={() => setCurrentStep(idx)}
+                onClick={() => {
+                  setCurrentStep(idx);
+                  setIsPlaying(false);
+                }}
                 className={`flex items-center justify-between rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
                   currentStep === idx
                     ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(6,182,212,0.3)]'
@@ -163,7 +242,7 @@ export const CyclohexaneLab: React.FC = () => {
           <div className="rounded-xl border border-cyan-500/20 bg-slate-950 p-3 space-y-2 text-xs">
             <h4 className="font-bold text-cyan-300 flex items-center gap-1">
               <ShieldCheck className="h-4 w-4 text-cyan-400" />
-              <span>Conformational Equilibrium ($\Delta G^\circ$)</span>
+              <span>Conformational Equilibrium (A-Value)</span>
             </h4>
             {substituent === 'CH3' && (
               <p className="text-slate-300 text-[11px] leading-relaxed">
@@ -172,7 +251,7 @@ export const CyclohexaneLab: React.FC = () => {
             )}
             {substituent === 't-Bu' && (
               <p className="text-slate-300 text-[11px] leading-relaxed">
-                The enormous *tert*-butyl group has an A-value of <span className="font-bold text-rose-400">20.0 kJ/mol</span>, locking the molecule into <span className="font-bold text-emerald-400">&gt;99.9% Equatorial</span> chair. Axial *tert*-butyl is energetically prohibitive!
+                The bulky *tert*-butyl group has an A-value of <span className="font-bold text-rose-400">20.0 kJ/mol</span>, locking the molecule into <span className="font-bold text-emerald-400">&gt;99.9% Equatorial</span> chair. Axial *tert*-butyl is energetically prohibitive!
               </p>
             )}
             {substituent === 'H' && (
@@ -180,6 +259,10 @@ export const CyclohexaneLab: React.FC = () => {
                 Unsubstituted cyclohexane flips continuously between degenerate Chair 1 and Chair 2 at room temperature (~100,000 flips/second), spending almost 99.9% of its lifetime in chair conformations.
               </p>
             )}
+
+            <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+              <strong className="text-cyan-300">Exam Rule:</strong> In ring-flip: <span className="text-rose-400 font-bold">Axial ⇄ Equatorial</span>, but <span className="text-emerald-400 font-bold">UP stays UP</span> and <span className="text-emerald-400 font-bold">DOWN stays DOWN</span>!
+            </div>
           </div>
         </div>
       </div>

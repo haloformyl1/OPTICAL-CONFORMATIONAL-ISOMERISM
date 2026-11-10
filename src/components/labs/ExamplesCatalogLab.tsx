@@ -2,6 +2,9 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ALL_EXAMPLES } from '../../content/examples';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { Molecule3DViewer } from '../3d/Molecule3DViewer';
+import { FischerProjection2D } from '../2d/FischerProjection2D';
+import { NewmanSawhorse2D } from '../2d/NewmanSawhorse2D';
+import { CyclohexaneChair2D } from '../2d/CyclohexaneChair2D';
 import { BilingualText } from '../BilingualText';
 import { Search, Filter, Layers, Eye, ChevronRight, BookOpen, Bookmark, BookmarkCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -15,6 +18,7 @@ export const ExamplesCatalogLab: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'catalog' | 'viewer'>('catalog');
   const [spaceFilling, setSpaceFilling] = useState(false);
   const [showDipole, setShowDipole] = useState(true);
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
   const viewerRef = useRef<HTMLDivElement>(null);
   const [isViewerFs, setIsViewerFs] = useState(false);
 
@@ -211,6 +215,32 @@ export const ExamplesCatalogLab: React.FC = () => {
                 {isBookmarked ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
               </button>
 
+              {/* View Mode Toggle: 3D vs 2D */}
+              <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('3d')}
+                  className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                    viewMode === '3d'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  3D
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('2d')}
+                  className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                    viewMode === '2d'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  2D Formula
+                </button>
+              </div>
+
               {/* Isomer Switcher */}
               <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5">
                 <button
@@ -237,36 +267,54 @@ export const ExamplesCatalogLab: React.FC = () => {
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSpaceFilling(!spaceFilling)}
-                className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                  spaceFilling
-                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
-                    : 'border-slate-700 bg-slate-800 text-slate-400'
-                }`}
-                title="Space-Filling (CPK spheres)"
-              >
-                <Layers className="h-4 w-4" />
-              </button>
+              {viewMode === '3d' && (
+                <button
+                  type="button"
+                  onClick={() => setSpaceFilling(!spaceFilling)}
+                  className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                    spaceFilling
+                      ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
+                      : 'border-slate-700 bg-slate-800 text-slate-400'
+                  }`}
+                  title="Space-Filling (CPK spheres)"
+                >
+                  <Layers className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* 3D Viewport */}
-          <div className="relative flex-1 min-h-[300px] rounded-xl overflow-hidden bg-gradient-to-b from-[#05111e] to-[#08182b] border border-cyan-500/10">
-            <MolecularCanvas cameraPosition={[0, 1.2, 4.5]}>
-              <Molecule3DViewer
-                structure={activeStructure}
-                showLabels={true}
-                showPriorityBadges={true}
-                spaceFilling={spaceFilling}
-                showDipole={showDipole}
-              />
-            </MolecularCanvas>
+          {/* Model Viewport Stage */}
+          <div className="relative flex-1 min-h-[300px] rounded-xl overflow-hidden bg-gradient-to-b from-[#05111e] to-[#08182b] border border-cyan-500/10 flex">
+            {viewMode === '3d' ? (
+              <>
+                <MolecularCanvas cameraPosition={[0, 1.2, 4.5]}>
+                  <Molecule3DViewer
+                    structure={activeStructure}
+                    showLabels={true}
+                    showPriorityBadges={true}
+                    spaceFilling={spaceFilling}
+                    showDipole={showDipole}
+                  />
+                </MolecularCanvas>
 
-            <div className="absolute top-3 left-3 z-10 rounded-lg bg-slate-900/80 border border-slate-700/60 px-2.5 py-1 text-[11px] text-cyan-300 backdrop-blur-md">
-              Showing: <span className="font-bold text-white">{activeIsomer === 'A' ? currentExample.isomerA.label : currentExample.isomerB.label}</span>
-            </div>
+                <div className="absolute top-3 left-3 z-10 rounded-lg bg-slate-900/80 border border-slate-700/60 px-2.5 py-1 text-[11px] text-cyan-300 backdrop-blur-md">
+                  Showing: <span className="font-bold text-white">{activeIsomer === 'A' ? currentExample.isomerA.label : currentExample.isomerB.label}</span>
+                </div>
+              </>
+            ) : (
+              <div className="h-full w-full overflow-y-auto p-2">
+                {currentExample.category === 'conformational' ? (
+                  currentExample.systemType === 'carbocycle' || currentExample.iupacName.en.toLowerCase().includes('cyclohexane') ? (
+                    <CyclohexaneChair2D substituent={currentExample.formula.includes('CH3') ? 'CH3' : 'H'} />
+                  ) : (
+                    <NewmanSawhorse2D moleculeType={currentExample.formula.includes('C4') ? 'butane' : 'ethane'} />
+                  )
+                ) : (
+                  <FischerProjection2D />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pedagogical Note / Formula Card */}

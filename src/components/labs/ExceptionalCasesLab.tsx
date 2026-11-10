@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { Molecule3DViewer } from '../3d/Molecule3DViewer';
+import { ExceptionalCase2D } from '../2d/ExceptionalCase2D';
 import { BilingualText } from '../BilingualText';
 import { EXCEPTIONAL_CASES } from '../../content/examples/exceptionalCases';
 import { Flame, Eye, EyeOff, Layers, ShieldAlert, Sparkles, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
@@ -10,6 +11,7 @@ export const ExceptionalCasesLab: React.FC = () => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [activeIsomer, setActiveIsomer] = useState<'A' | 'B'>('A');
   const [spaceFilling, setSpaceFilling] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
   const rootRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -80,14 +82,51 @@ export const ExceptionalCasesLab: React.FC = () => {
           </div>
         </div>
 
-        {/* View Toggles */}
+        {/* View Mode & Toggles */}
         <div className="flex items-center gap-2">
+          {/* View Mode Switcher */}
+          <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setViewMode('3d')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === '3d'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3D Model
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('2d')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === '2d'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2D Blueprint
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer border-0 ${
+                viewMode === 'split'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Split (2D + 3D)
+            </button>
+          </div>
+
           {/* Isomer A / B Switcher */}
           <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900/80 p-0.5">
             <button
               type="button"
               onClick={() => setActiveIsomer('A')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer border-0 ${
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer border-0 ${
                 activeIsomer === 'A'
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
                   : 'text-slate-400 hover:text-white'
@@ -98,7 +137,7 @@ export const ExceptionalCasesLab: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveIsomer('B')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer border-0 ${
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer border-0 ${
                 activeIsomer === 'B'
                   ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
                   : 'text-slate-400 hover:text-white'
@@ -111,32 +150,31 @@ export const ExceptionalCasesLab: React.FC = () => {
           <button
             type="button"
             onClick={() => setSpaceFilling(!spaceFilling)}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               spaceFilling
                 ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
                 : 'border-slate-700 bg-slate-800 text-slate-400'
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Space-Filling</span>
+            <span className="hidden sm:inline">CPK</span>
           </button>
 
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:text-white hover:bg-cyan-500/20 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/90 px-2.5 py-1.5 text-xs font-bold text-cyan-300 hover:text-white hover:bg-cyan-500/20 transition-all cursor-pointer"
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Laboratory'}
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Exit' : 'Full Screen'}</span>
           </button>
         </div>
       </div>
 
       {/* Main Content Layout: Left Master List + Right 3D Visualizer & Theory */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] flex-1 min-h-[460px] lg:min-h-[560px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] flex-1 min-h-[460px] lg:min-h-[560px]">
         {/* Left Column: Interactive List of Exceptional Cases */}
-        <div className="border-r border-[rgba(70,227,255,0.14)] bg-[#071524]/90 overflow-y-auto max-h-[260px] lg:max-h-none p-2 space-y-1">
+        <div className="border-r border-[rgba(70,227,255,0.14)] bg-[#071524]/90 overflow-y-auto max-h-[240px] lg:max-h-none p-2 space-y-1">
           {filteredCases.map((c, idx) => {
             const isOpt = c.id.startsWith('exc-opt');
             const isSelected = selectedIndex === idx;
@@ -174,35 +212,47 @@ export const ExceptionalCasesLab: React.FC = () => {
           })}
         </div>
 
-        {/* Right Area: 3D Stage + Bottom Mechanism Card */}
+        {/* Right Area: Visualizer Stage + Bottom Mechanism Card */}
         <div className="flex flex-col min-w-0 h-full">
-          {/* 3D Model Stage */}
-          <div className="relative flex-1 min-h-[300px] bg-gradient-to-b from-[#05111e] to-[#08182b]">
-            <MolecularCanvas cameraPosition={[0, 1.2, 4.8]}>
-              <Molecule3DViewer
-                structure={activeStructure}
-                showLabels={true}
-                showPriorityBadges={true}
-                spaceFilling={spaceFilling}
-              />
-            </MolecularCanvas>
+          {/* Visualizer Stage */}
+          <div className="relative flex-1 min-h-[300px] bg-gradient-to-b from-[#05111e] to-[#08182b] flex overflow-hidden">
+            {/* 3D Model Stage */}
+            {(viewMode === '3d' || viewMode === 'split') && (
+              <div className={`relative h-full ${viewMode === 'split' ? 'w-full lg:w-1/2 border-r border-slate-800' : 'w-full'}`}>
+                <MolecularCanvas cameraPosition={[0, 1.2, 4.8]}>
+                  <Molecule3DViewer
+                    structure={activeStructure}
+                    showLabels={true}
+                    showPriorityBadges={true}
+                    spaceFilling={spaceFilling}
+                  />
+                </MolecularCanvas>
 
-            {/* Model Badge */}
-            <div className="absolute top-4 left-4 z-10">
-              <div className="rounded-xl border border-cyan-500/30 bg-slate-900/90 p-3 backdrop-blur-md shadow-lg max-w-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                  {currentCase.id.startsWith('exc-opt') ? 'Optical Isomerism Exception' : 'Conformational Isomerism Exception'}
-                </span>
-                <h4 className="text-sm font-black text-white mt-0.5">{currentCase.iupacName.en}</h4>
-                <p className="text-xs text-amber-300 font-bold mt-0.5">
-                  Showing: {activeIsomer === 'A' ? currentCase.isomerA.label : currentCase.isomerB.label}
-                </p>
+                {/* Model Badge */}
+                <div className="absolute top-4 left-4 z-10">
+                  <div className="rounded-xl border border-cyan-500/30 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-lg max-w-[240px]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                      {currentCase.id.startsWith('exc-opt') ? 'Optical Exception' : 'Conformational Exception'}
+                    </span>
+                    <h4 className="text-xs font-black text-white mt-0.5 truncate">{currentCase.iupacName.en}</h4>
+                    <p className="text-[11px] text-amber-300 font-bold">
+                      {activeIsomer === 'A' ? currentCase.isomerA.label : currentCase.isomerB.label}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 2D Mechanism Blueprint Stage */}
+            {(viewMode === '2d' || viewMode === 'split') && (
+              <div className={`h-full ${viewMode === 'split' ? 'w-full lg:w-1/2' : 'w-full'} overflow-y-auto`}>
+                <ExceptionalCase2D currentCase={currentCase} activeIsomer={activeIsomer} />
+              </div>
+            )}
           </div>
 
           {/* Bottom Mechanism & Exam Insight Drawer */}
-          <div className="border-t border-[rgba(70,227,255,0.14)] bg-[#071524]/95 p-4 space-y-2">
+          <div className="border-t border-[rgba(70,227,255,0.14)] bg-[#071524]/95 p-3.5 space-y-1.5">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
               <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
@@ -210,12 +260,12 @@ export const ExceptionalCasesLab: React.FC = () => {
               </h4>
             </div>
             <p className="text-xs text-slate-200 leading-relaxed">
-              {currentCase.exceptionMechanism?.en}
+              {currentCase.exceptionMechanism?.en || currentCase.pedagogicalNote.en}
             </p>
-            {currentCase.pedagogicalNote && (
-              <div className="rounded-lg bg-cyan-950/40 border border-cyan-500/20 p-2 text-[11px] text-cyan-200">
-                <strong>Exam Alert: </strong>{currentCase.pedagogicalNote.en}
-              </div>
+            {currentCase.exceptionMechanism?.bn && (
+              <p className="text-[11px] text-slate-400 font-bengali leading-snug">
+                {currentCase.exceptionMechanism.bn}
+              </p>
             )}
           </div>
         </div>
@@ -223,4 +273,3 @@ export const ExceptionalCasesLab: React.FC = () => {
     </div>
   );
 };
-

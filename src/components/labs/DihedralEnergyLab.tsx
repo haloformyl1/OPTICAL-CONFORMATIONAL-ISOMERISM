@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { DihedralRotator3D } from '../3d/DihedralRotator3D';
+import { NewmanSawhorse2D } from '../2d/NewmanSawhorse2D';
 import { BilingualText } from '../BilingualText';
-import { Play, Pause, RotateCcw, Zap, Compass, Info, ShieldAlert } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Compass, Info, ShieldAlert, Box, FileText, Columns } from 'lucide-react';
 
 export const DihedralEnergyLab: React.FC = () => {
   const [molecule, setMolecule] = useState<'ethane' | 'propane' | 'butane' | 'glycol'>('butane');
   const [angle, setAngle] = useState<number>(180); // Default to anti 180
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'perspective' | 'newman'>('perspective');
+  const [viewMode, setViewMode] = useState<'3d' | '2d-newman' | 'split'>('3d');
+  const [cameraPerspective, setCameraPerspective] = useState<'perspective' | 'newman'>('perspective');
 
   const animRef = useRef<number | null>(null);
 
@@ -37,86 +39,74 @@ export const DihedralEnergyLab: React.FC = () => {
   }, [isPlaying]);
 
   // Potential Energy calculation based on molecule and angle
-  // Butane curve:
-  // Anti (180 deg) = 0 kJ/mol
-  // Gauche (60 deg, 300 deg) = 3.8 kJ/mol
-  // Eclipsed (120 deg, 240 deg) = 16.0 kJ/mol
-  // Fully Eclipsed (0 deg, 360 deg) = 19.0 kJ/mol
   const calculateEnergy = (deg: number, mol: string): number => {
     const r = (deg * Math.PI) / 180;
     if (mol === 'ethane') {
-      // 3-fold torsional barrier: V = (V0/2) * (1 - cos(3theta)), V0 = 12 kJ/mol
       return Math.round((6 * (1 - Math.cos(3 * r))) * 10) / 10;
     }
     if (mol === 'propane') {
-      // V0 = 14 kJ/mol
       return Math.round((7 * (1 - Math.cos(3 * r))) * 10) / 10;
     }
     if (mol === 'glycol') {
-      // Exceptional Gauche: Gauche (60 deg) is MINIMUM (-9 kJ/mol relative to anti)
-      // Anti (180 deg) = 9 kJ/mol
-      // Gauche (60 deg, 300 deg) = 0 kJ/mol (H-bonding stabilization)
-      // Fully Eclipsed = 24 kJ/mol
       const cosTheta = Math.cos(r);
       const cos2Theta = Math.cos(2 * r);
       const cos3Theta = Math.cos(3 * r);
       const energy = 10 - 8 * cosTheta + 5 * cos2Theta + 6 * (1 - cos3Theta);
       return Math.max(0, Math.round(energy * 10) / 10);
     }
-    // Butane:
-    // Fourier expansion approximation: V(theta) = c1(1-cos theta) + c2(1-cos 2theta) + c3(1-cos 3theta)
     const e = 9.5 * (1 - Math.cos(r)) - 2.5 * (1 - Math.cos(2 * r)) + 3.8 * (1 - Math.cos(3 * r));
-    // Normalize so anti (180) is 0
     return Math.max(0, Math.round((e - 0.5) * 10) / 10);
   };
 
   const currentEnergy = calculateEnergy(angle, molecule);
 
-  // Conformational State Descriptor
   const getConformationDescriptor = (deg: number, mol: string) => {
     const d = Math.round(deg);
     if (d >= 350 || d <= 10) {
       return {
         label: 'Fully Eclipsed (Syn-periplanar)',
-        bn: 'সম্পূর্ণ গ্রহণযুক্ত (Syn-periplanar)',
-        color: 'text-rose-400',
-        bg: 'border-rose-500/40 bg-rose-500/10',
-        type: 'Global Maximum Energy (Steric + Torsional Strain)',
+        desc: 'Maximum steric clash between bulky groups & torsional strain.',
+        type: 'Maximum Potential Energy',
+        color: 'text-rose-400 border-rose-500/40 bg-rose-950/30',
       };
     }
     if ((d >= 50 && d <= 70) || (d >= 290 && d <= 310)) {
+      if (mol === 'glycol') {
+        return {
+          label: 'Gauche Conformation (STABLE EXCEPTION!)',
+          desc: 'Intramolecular O-H···O hydrogen bonding stabilizes the 60° rotamer over anti!',
+          type: 'Global Minimum (Exception to General Rule)',
+          color: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/30',
+        };
+      }
       return {
-        label: mol === 'glycol' ? 'Gauche (Intramolecular H-Bonded Minimum)' : 'Gauche (Synclinal)',
-        bn: mol === 'glycol' ? 'গশ (অন্তঃআণবিক হাইড্রোজেন বন্ধন যুক্ত স্থিতিশীল)' : 'গশ (Synclinal)',
-        color: 'text-emerald-400',
-        bg: 'border-emerald-500/40 bg-emerald-500/10',
-        type: mol === 'glycol' ? 'Global Minimum in Gas/Non-polar!' : 'Local Minimum (Steric Strain 3.8 kJ/mol)',
+        label: 'Gauche Conformation (Synclinal)',
+        desc: 'Staggered but has 60° steric crowding between terminal groups.',
+        type: 'Local Minimum (+3.8 kJ/mol)',
+        color: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/30',
       };
     }
     if ((d >= 110 && d <= 130) || (d >= 230 && d <= 250)) {
       return {
         label: 'Partially Eclipsed (Anticlinal)',
-        bn: 'আংশিক গ্রহণযুক্ত (Anticlinal)',
-        color: 'text-amber-400',
-        bg: 'border-amber-500/40 bg-amber-500/10',
-        type: 'Intermediate Energy Barrier (H / CH3 eclipsing)',
+        desc: 'Bonds eclipse each other with H/CH3 eclipsing strain.',
+        type: 'Barrier Maximum (+16.0 kJ/mol)',
+        color: 'text-orange-400 border-orange-500/40 bg-orange-950/30',
       };
     }
     if (d >= 170 && d <= 190) {
       return {
-        label: 'Anti-periplanar (Staggered)',
-        bn: 'অ্যান্টি-পেরিপ্ল্যানার (সমান্তরাল বিপরীত)',
-        color: 'text-cyan-400',
-        bg: 'border-cyan-500/40 bg-cyan-500/10',
-        type: mol === 'glycol' ? 'Less stable than Gauche in CCl4' : 'Global Minimum (Steric & Torsional Minimum)',
+        label: 'Anti Conformation (Anti-periplanar)',
+        desc: 'Bulky groups are at 180° opposite sides. Zero steric and zero torsional strain.',
+        type: 'Global Minimum Energy (Most Stable)',
+        color: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/30',
       };
     }
     return {
-      label: 'Skew / Intermediate Rotamer',
-      bn: 'তির্যক / মধ্যবর্তী ঘূর্ণক',
-      color: 'text-slate-300',
-      bg: 'border-slate-700 bg-slate-800/40',
-      type: 'Torsional rotation in progress',
+      label: 'Skew / Intermediate Conformation',
+      desc: 'Transitional dihedral angle between energy minima and maxima.',
+      type: 'Intermediate State',
+      color: 'text-slate-300 border-slate-700 bg-slate-900/40',
     };
   };
 
@@ -147,22 +137,65 @@ export const DihedralEnergyLab: React.FC = () => {
           </select>
         </div>
 
-        {/* View Mode & Quick Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setViewMode(viewMode === 'perspective' ? 'newman' : 'perspective')}
-            className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 cursor-pointer"
-          >
-            <Compass className="h-3.5 w-3.5" />
-            <span>{viewMode === 'perspective' ? 'Switch to Newman View' : 'Switch to 3D View'}</span>
-          </button>
+        {/* View Mode Switcher (3D vs 2D Newman/Sawhorse vs Split) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setViewMode('3d')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer border-0 ${
+                viewMode === '3d'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Box className="h-3.5 w-3.5" />
+              <span>3D Model</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('2d-newman')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer border-0 ${
+                viewMode === '2d-newman'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>2D Newman / Sawhorse</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer border-0 ${
+                viewMode === 'split'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Columns className="h-3.5 w-3.5" />
+              <span>Split (2D + 3D)</span>
+            </button>
+          </div>
 
+          {/* 3D Camera Newman Toggle */}
+          {(viewMode === '3d' || viewMode === 'split') && (
+            <button
+              type="button"
+              onClick={() => setCameraPerspective(cameraPerspective === 'perspective' ? 'newman' : 'perspective')}
+              className="flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-slate-900/80 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 cursor-pointer"
+            >
+              <Compass className="h-3.5 w-3.5" />
+              <span>{cameraPerspective === 'perspective' ? '3D Newman Angle' : 'Perspective Angle'}</span>
+            </button>
+          )}
+
+          {/* Auto Rotate Play / Pause */}
           <button
             type="button"
             onClick={() => setIsPlaying(!isPlaying)}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer border-0 ${
-              isPlaying ? 'bg-amber-500 text-slate-950' : 'bg-cyan-500 text-slate-950'
+              isPlaying ? 'bg-amber-500 text-slate-950 font-black' : 'bg-cyan-500 text-slate-950 font-black'
             }`}
           >
             {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -171,40 +204,85 @@ export const DihedralEnergyLab: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Interactive Stage: 3D Canvas + Energy Curve */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] flex-1 min-h-[460px] lg:min-h-[520px]">
-        {/* 3D Visualizer Canvas */}
-        <div className="relative h-full w-full min-h-[300px] bg-gradient-to-b from-[#05111e] to-[#08182b]">
-          <MolecularCanvas cameraPosition={viewMode === 'newman' ? [0, 0, 4.8] : [0, 1.2, 4.5]}>
-            <DihedralRotator3D angleDeg={angle} moleculeType={molecule} viewMode={viewMode} />
-          </MolecularCanvas>
+      {/* Main Workspace Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] flex-1 min-h-[460px] lg:min-h-[540px] overflow-hidden">
+        {/* Visualizer Area */}
+        <div className="relative h-full w-full min-h-[360px] overflow-y-auto bg-gradient-to-b from-[#05111e] to-[#08182b]">
+          {viewMode === '2d-newman' && (
+            <div className="p-4 sm:p-6 h-full flex flex-col justify-center">
+              <NewmanSawhorse2D
+                angleDeg={angle}
+                moleculeType={molecule}
+                onAngleChange={(a) => setAngle(a)}
+              />
+            </div>
+          )}
 
-          {/* Current Conformation HUD Badge */}
-          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
-            <div className={`rounded-xl border p-2.5 backdrop-blur-md shadow-lg ${descriptor.bg}`}>
-              <div className="flex items-center gap-1.5">
-                <Zap className={`h-4 w-4 ${descriptor.color}`} />
-                <span className={`text-xs font-black uppercase tracking-wider ${descriptor.color}`}>
-                  {descriptor.label}
-                </span>
+          {viewMode === '3d' && (
+            <div className="relative h-full w-full min-h-[420px]">
+              <MolecularCanvas
+                cameraPosition={cameraPerspective === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}
+                cameraTarget={[0, 0, 0]}
+              >
+                <DihedralRotator3D
+                  angleDeg={angle}
+                  moleculeType={molecule}
+                  viewMode={cameraPerspective}
+                />
+              </MolecularCanvas>
+
+              {/* Floating HUD status banner at bottom of 3D Canvas */}
+              <div className="absolute bottom-4 inset-x-4 max-w-xl mx-auto z-10 rounded-2xl border p-3.5 backdrop-blur-xl shadow-2xl flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border-slate-700/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
+                      {Math.round(angle)}°
+                    </span>
+                    <h4 className="text-sm font-black text-white">{descriptor.label}</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">{descriptor.desc}</p>
+                </div>
+                <div className="rounded-lg bg-slate-950/80 border border-cyan-500/30 px-3 py-1.5 text-xs text-slate-300">
+                  Energy: <span className="font-mono font-bold text-amber-300">{currentEnergy} kJ/mol</span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-300 mt-0.5">{descriptor.type}</p>
             </div>
-            <div className="rounded-lg bg-slate-900/80 border border-slate-700/60 px-2.5 py-1 text-[11px] text-slate-300 backdrop-blur-sm">
-              Dihedral Angle (θ): <span className="font-mono font-bold text-cyan-300">{Math.round(angle)}°</span> | Energy: <span className="font-mono font-bold text-amber-300">{currentEnergy} kJ/mol</span>
+          )}
+
+          {viewMode === 'split' && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 h-full gap-4 p-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2 overflow-y-auto min-h-[350px]">
+                <NewmanSawhorse2D
+                  angleDeg={angle}
+                  moleculeType={molecule}
+                  onAngleChange={(a) => setAngle(a)}
+                />
+              </div>
+              <div className="relative rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden min-h-[350px]">
+                <MolecularCanvas
+                  cameraPosition={cameraPerspective === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}
+                  cameraTarget={[0, 0, 0]}
+                >
+                  <DihedralRotator3D
+                    angleDeg={angle}
+                    moleculeType={molecule}
+                    viewMode={cameraPerspective}
+                  />
+                </MolecularCanvas>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Right Column: Dynamic Potential Energy Plot & Snapping Controls */}
-        <div className="flex flex-col border-t lg:border-t-0 lg:border-l border-[rgba(70,227,255,0.14)] bg-[#071524]/90 p-4 overflow-y-auto">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-2 flex items-center gap-1.5">
+        {/* Right Column: Dynamic Potential Energy Plot & Scrubber */}
+        <div className="flex flex-col border-t lg:border-t-0 lg:border-l border-[rgba(70,227,255,0.14)] bg-[#071524]/90 p-4 overflow-y-auto space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
             <Zap className="h-4 w-4" />
-            <span>Potential Energy Profile (kJ/mol)</span>
+            <span>Potential Energy Curve (kJ/mol)</span>
           </h3>
 
           {/* Real-time SVG Potential Energy Curve */}
-          <div className="relative w-full h-44 rounded-xl border border-cyan-500/20 bg-slate-950 p-2 mb-3">
+          <div className="relative w-full h-44 rounded-xl border border-cyan-500/20 bg-slate-950 p-2">
             <svg viewBox="0 0 360 100" className="w-full h-full overflow-visible">
               {/* Grid lines */}
               <line x1="0" y1="20" x2="360" y2="20" stroke="#334155" strokeDasharray="3 3" />
@@ -253,85 +331,84 @@ export const DihedralEnergyLab: React.FC = () => {
             </div>
           </div>
 
-          {/* Interactive Dihedral Angle Slider */}
-          <div className="space-y-1.5 mb-4">
-            <div className="flex justify-between text-xs font-semibold text-slate-300">
-              <span>Scrub Dihedral Angle (θ):</span>
-              <span className="font-mono text-cyan-300 font-bold">{Math.round(angle)}°</span>
+          {/* Interactive Dihedral Angle Scrubber Slider */}
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-300">Scrub Dihedral Angle (θ):</span>
+              <span className="font-mono font-bold text-cyan-400">{Math.round(angle)}°</span>
             </div>
             <input
               type="range"
               min="0"
               max="360"
+              step="1"
               value={angle}
-              onChange={(e) => {
-                setIsPlaying(false);
-                setAngle(Number(e.target.value));
-              }}
+              onChange={(e) => setAngle(Number(e.target.value))}
               className="w-full accent-cyan-400 cursor-pointer"
             />
           </div>
 
-          {/* Quick Snap Conformation Buttons */}
-          <div className="space-y-1.5 mb-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Snap to Key Conformations:
+          {/* Quick Snap Buttons for Class 11/12 High-Yield Rotamers */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Quick Jump to Standard Conformations:
             </span>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => { setAngle(180); setIsPlaying(false); }}
-                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  Math.round(angle) === 180 ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300' : 'border-slate-700 bg-slate-900 text-slate-400'
+                onClick={() => setAngle(180)}
+                className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  Math.round(angle) === 180
+                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                 }`}
               >
-                Anti (180°)
+                <div className="font-bold">Anti (180°)</div>
+                <div className="text-[10px] text-slate-400">0.0 kJ/mol (Global Min)</div>
               </button>
+
               <button
                 type="button"
-                onClick={() => { setAngle(60); setIsPlaying(false); }}
-                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  Math.round(angle) === 60 ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-400'
+                onClick={() => setAngle(60)}
+                className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  Math.round(angle) === 60
+                    ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                 }`}
               >
-                Gauche (60°)
+                <div className="font-bold">Gauche (60°)</div>
+                <div className="text-[10px] text-slate-400">3.8 kJ/mol (Local Min)</div>
               </button>
+
               <button
                 type="button"
-                onClick={() => { setAngle(120); setIsPlaying(false); }}
-                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  Math.round(angle) === 120 ? 'border-amber-400 bg-amber-500/20 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400'
+                onClick={() => setAngle(120)}
+                className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  Math.round(angle) === 120
+                    ? 'border-orange-400 bg-orange-500/20 text-orange-300'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                 }`}
               >
-                Partially Eclipsed (120°)
+                <div className="font-bold">Part. Eclipsed (120°)</div>
+                <div className="text-[10px] text-slate-400">16.0 kJ/mol (Barrier)</div>
               </button>
+
               <button
                 type="button"
-                onClick={() => { setAngle(0); setIsPlaying(false); }}
-                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  Math.round(angle) === 0 ? 'border-rose-400 bg-rose-500/20 text-rose-300' : 'border-slate-700 bg-slate-900 text-slate-400'
+                onClick={() => setAngle(0)}
+                className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                  Math.round(angle) === 0
+                    ? 'border-rose-400 bg-rose-500/20 text-rose-300'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                 }`}
               >
-                Fully Eclipsed (0°)
+                <div className="font-bold">Fully Eclipsed (0°)</div>
+                <div className="text-[10px] text-slate-400">19.0 kJ/mol (Max Clash)</div>
               </button>
             </div>
           </div>
-
-          {/* Exceptional Case Note for Glycol */}
-          {molecule === 'glycol' && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-3 text-xs text-emerald-300">
-              <div className="flex items-center gap-1.5 font-bold mb-1">
-                <ShieldAlert className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span>The Gauche Effect Anomaly!</span>
-              </div>
-              <p className="leading-relaxed text-[11px] text-emerald-200/90">
-                Unlike butane where Anti is the global minimum, ethylene glycol forms a stable 5-membered cyclic intramolecular hydrogen bond (O-H···O) in the Gauche conformer (60°), releasing ~8-12 kJ/mol and making Gauche significantly more stable than Anti!
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 };
-
