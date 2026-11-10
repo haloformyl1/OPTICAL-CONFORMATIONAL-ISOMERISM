@@ -10,13 +10,13 @@ import { ShieldCheck, ShieldAlert, Layers, Eye, EyeOff, Info, CheckCircle2 } fro
 export const SymmetryScannerLab: React.FC = () => {
   const [selectedExampleIndex, setSelectedExampleIndex] = useState(0); // meso-tartaric acid by default
   const [showPOS, setShowPOS] = useState(true);
-  const [posPlane, setPosPlane] = useState<'xy' | 'yz' | 'xz'>('xy');
+  const [posPlane, setPosPlane] = useState<'xy' | 'yz' | 'xz'>('xz');
   const [showCOS, setShowCOS] = useState(false);
   const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
 
   // Available curated test molecules
   const testMolecules = [
-    { label: "meso-Tartaric Acid (Has POS, Achiral)", pair: OPTICAL_EXAMPLES[2], plane: 'xy' as const, hasPos: true, hasCos: false, blueprintId: 'meso-tartaric' as const },
+    { label: "meso-Tartaric Acid (Has POS, Achiral)", pair: OPTICAL_EXAMPLES[2], plane: 'xz' as const, hasPos: true, hasCos: false, blueprintId: 'meso-tartaric' as const },
     { label: "(2R,3R)-Tartaric Acid (Chiral Enantiomer, No POS/COS)", pair: OPTICAL_EXAMPLES[1], plane: 'xy' as const, hasPos: false, hasCos: false, blueprintId: 'chiral-tartaric' as const },
     { label: "trans-1,3-Dimethylcyclobutane (Has POS & COS, Achiral)", pair: CONFORMATIONAL_EXAMPLES[25] || OPTICAL_EXAMPLES[0], plane: 'xy' as const, hasPos: true, hasCos: true, blueprintId: 'trans-cyclobutane' as const },
     { label: "cis-1,2-Dichloroethene (Has POS, Achiral)", pair: OPTICAL_EXAMPLES[0], plane: 'yz' as const, hasPos: true, hasCos: false, blueprintId: 'cis-dichloro' as const },
