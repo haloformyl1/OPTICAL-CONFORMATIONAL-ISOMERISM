@@ -26,6 +26,63 @@ export const getElementColor = (el: string): string => {
   return ELEMENT_DATA[el]?.color || '#94a3b8';
 };
 
+export const GROUP_COLORS: Record<string, string> = {
+  // Halogens
+  F: '#22c55e',          // Light Mint Green
+  Cl: '#10b981',         // Emerald Green
+  Br: '#dc2626',         // Reddish-Brown / Crimson
+  I: '#7e22ce',          // Royal Violet / Purple
+  // Oxygen functional groups
+  OH: '#f43f5e',         // Rose / Coral Red
+  COOH: '#06b6d4',       // Cyan / Teal
+  CHO: '#f97316',        // Orange (Aldehyde)
+  CH2OH: '#14b8a6',      // Teal
+  CH2COOH: '#0ea5e9',    // Sky Blue
+  // Alkyl chains - each distinct group has a distinct color!
+  CH3: '#475569',        // Slate Charcoal (Methyl)
+  CH2CH3: '#6366f1',     // Royal Indigo (Ethyl) - distinct from CH3!
+  C2H5: '#6366f1',       // Royal Indigo (Ethyl)
+  Propyl: '#84cc16',     // Lime Green
+  C3H7: '#84cc16',       // Lime Green
+  // Nitrogen functional groups
+  NH2: '#2563eb',        // Cobalt Blue
+  NHCH3: '#3b82f6',      // Dodger Blue
+  NO2: '#ea580c',        // Vermilion
+  CN: '#ec4899',         // Hot Pink
+  // Aromatics
+  Phenyl: '#c026d3',     // Magenta
+  Ph: '#c026d3',         // Magenta
+  C6H5: '#c026d3',       // Magenta
+  // Sulfur
+  SH: '#eab308',         // Amber Yellow
+  // Hydrogen and isotopes
+  H: '#f8fafc',          // Crisp White
+  D: '#a5f3fc',          // Ice Blue (Deuterium)
+  T: '#93c5fd',          // Sky Blue (Tritium)
+};
+
+export const getGroupColor = (label?: string, element?: string): string => {
+  if (label) {
+    const clean = label.replace(/[()*\s]/g, '');
+    if (GROUP_COLORS[clean]) return GROUP_COLORS[clean];
+    if (clean === 'CH2CH3' || clean === 'C2H5' || clean.includes('CH2CH3')) return '#6366f1';
+    if (clean === 'CH3') return '#475569';
+    if (clean.startsWith('OH')) return '#f43f5e';
+    if (clean.startsWith('COOH')) return '#06b6d4';
+    if (clean.startsWith('CHO')) return '#f97316';
+    if (clean.startsWith('CH2OH')) return '#14b8a6';
+    if (clean.startsWith('Cl')) return '#10b981';
+    if (clean.startsWith('Br')) return '#dc2626';
+    if (clean.startsWith('NH2')) return '#2563eb';
+    if (clean.startsWith('Ph') || clean.includes('Phenyl')) return '#c026d3';
+    if (clean === 'H') return '#f8fafc';
+  }
+  if (element && ELEMENT_DATA[element]) {
+    return ELEMENT_DATA[element].color;
+  }
+  return '#94a3b8';
+};
+
 export const getElementRadius = (el: string): number => {
   return ELEMENT_DATA[el]?.radius || 0.4;
 };

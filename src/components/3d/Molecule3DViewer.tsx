@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Sphere, Cylinder, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MolecularStructure3D, Atom3D, Bond3D } from '../../types/isomerism';
-import { getElementColor, getElementRadius } from '../../utils/chemistry';
+import { getElementColor, getElementRadius, getGroupColor } from '../../utils/chemistry';
 
 const StereocenterHalo: React.FC<{ radius: number }> = ({ radius }) => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -86,10 +86,17 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
         let baseRadius = getElementRadius(atom.element);
         if (spaceFilling) baseRadius *= 1.85;
 
-        // Color coding: standard CPK or axial/equatorial conformation highlight
-        let color = atom.color || getElementColor(atom.element);
-        if (highlightConformation && atom.conformationType) {
-          color = atom.conformationType === 'axial' ? '#f59e0b' : '#06b6d4'; // Amber for axial, Cyan for equatorial
+        // Color coding: stereocenter carbon has dark carbon (#1e293b),
+        // while every distinct group has its distinct, consistent group color!
+        let color = atom.color;
+        if (!color) {
+          if (highlightConformation && atom.conformationType) {
+            color = atom.conformationType === 'axial' ? '#f59e0b' : '#06b6d4';
+          } else if (atom.isStereocenter) {
+            color = '#1e293b';
+          } else {
+            color = getGroupColor(atom.label, atom.element);
+          }
         }
 
         // Compute radial outward label position to eliminate overlaps

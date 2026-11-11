@@ -141,6 +141,223 @@ export const FISCHER_PAIRS_DATA: Record<number, FischerMoleculeData> = {
       },
     ],
   },
+  5: {
+    name: { en: "(R)- vs (S)-2-Bromobutane (Enantiomers)", bn: "(R)- বনাম (S)-২-ব্রোমোবিউটেন (এন্যানশিওমার)" },
+    formula: "C4H9Br",
+    topGroup: "CH3",
+    bottomGroup: "C2H5",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'Br',
+        leftB: 'Br',
+        rightB: 'H',
+      },
+    ],
+  },
+  6: {
+    name: { en: "(S)- vs (R)-Alanine (2-Aminopropanoic acid)", bn: "(S)- বনাম (R)-অ্যালানিন" },
+    formula: "C3H7NO2",
+    topGroup: "COOH",
+    bottomGroup: "CH3",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'S',
+        configB: 'R',
+        leftA: 'H',
+        rightA: 'NH2',
+        leftB: 'NH2',
+        rightB: 'H',
+      },
+    ],
+  },
+  7: {
+    name: { en: "D- vs L-Glyceraldehyde (Reference Sugar)", bn: "D- বনাম L-গ্লিসারালডিহাইড" },
+    formula: "C3H6O3",
+    topGroup: "CHO",
+    bottomGroup: "CH2OH",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'OH',
+        leftB: 'OH',
+        rightB: 'H',
+      },
+    ],
+  },
+  8: {
+    name: { en: "(2R,3R)- vs (2S,3S)-2,3-Dichlorobutane (Chiral Pair)", bn: "(২R,৩R)- বনাম (২S,৩S)-২,৩-ডাইক্লোরোবিউটেন" },
+    formula: "C4H8Cl2",
+    topGroup: "CH3",
+    bottomGroup: "CH3",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'Cl',
+        leftB: 'Cl',
+        rightB: 'H',
+      },
+      {
+        carbonNum: 3,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'Cl',
+        rightA: 'H',
+        leftB: 'H',
+        rightB: 'Cl',
+      },
+    ],
+  },
+  9: {
+    name: { en: "meso-2,3-Dichlorobutane vs Mirror Image (Superimposable)", bn: "মেসো-২,৩-ডাইক্লোরোবিউটেন (উপরিবাতযোগ্য)" },
+    formula: "C4H8Cl2",
+    topGroup: "CH3",
+    bottomGroup: "CH3",
+    relationship: "identical",
+    isMeso: true,
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'Cl',
+        leftB: 'Cl',
+        rightB: 'H',
+      },
+      {
+        carbonNum: 3,
+        configA: 'S',
+        configB: 'R',
+        leftA: 'H',
+        rightA: 'Cl',
+        leftB: 'Cl',
+        rightB: 'H',
+      },
+    ],
+  },
+  10: {
+    name: { en: "(2R,3S)- vs (2R,3R)-3-Chloro-2-butanol (Diastereomers)", bn: "৩-ক্লোরো-২-বিউটানল (ডায়াস্টেরিওমার)" },
+    formula: "C4H9ClO",
+    topGroup: "CH3",
+    bottomGroup: "CH3",
+    relationship: "diastereomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'R',
+        leftA: 'H',
+        rightA: 'OH',
+        leftB: 'H',
+        rightB: 'OH',
+      },
+      {
+        carbonNum: 3,
+        configA: 'S',
+        configB: 'R',
+        leftA: 'H',
+        rightA: 'Cl',
+        leftB: 'Cl',
+        rightB: 'H',
+      },
+    ],
+  },
+  11: {
+    name: { en: "(R)- vs (S)-1-Phenylethanol (Aromatic Alcohol)", bn: "(R)- বনাম (S)-১-ফিনাইলইথানল" },
+    formula: "C8H10O",
+    topGroup: "Phenyl",
+    bottomGroup: "CH3",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 1,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'OH',
+        leftB: 'OH',
+        rightB: 'H',
+      },
+    ],
+  },
+  12: {
+    name: { en: "(R)- vs (S)-Butan-2-ol (sec-Butanol)", bn: "(R)- বনাম (S)-বিউটান-২-অল" },
+    formula: "C4H10O",
+    topGroup: "CH3",
+    bottomGroup: "C2H5",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'H',
+        rightA: 'OH',
+        leftB: 'OH',
+        rightB: 'H',
+      },
+    ],
+  },
+  13: {
+    name: { en: "(R)- vs (S)-Bromochlorofluoromethane (CHBrClF)", bn: "ব্রোমোক্লোরোফ্লুরোমিথেন" },
+    formula: "CHBrClF",
+    topGroup: "Br",
+    bottomGroup: "H",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 1,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'F',
+        rightA: 'Cl',
+        leftB: 'Cl',
+        rightB: 'F',
+      },
+    ],
+  },
+  14: {
+    name: { en: "(2S,3R)- vs (2R,3S)-2-Bromo-3-chlorobutane", bn: "২-ব্রোমো-৩-ক্লোরোবিউটেন (এন্যানশিওমার)" },
+    formula: "C4H8BrCl",
+    topGroup: "CH3",
+    bottomGroup: "CH3",
+    relationship: "enantiomers",
+    centers: [
+      {
+        carbonNum: 2,
+        configA: 'S',
+        configB: 'R',
+        leftA: 'H',
+        rightA: 'Br',
+        leftB: 'Br',
+        rightB: 'H',
+      },
+      {
+        carbonNum: 3,
+        configA: 'R',
+        configB: 'S',
+        leftA: 'Cl',
+        rightA: 'H',
+        leftB: 'H',
+        rightB: 'Cl',
+      },
+    ],
+  },
 };
 
 interface FischerProjection2DProps {
@@ -173,16 +390,29 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({
       case 'Cl':
         return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
       case 'Br':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        return 'bg-red-950/60 text-red-300 border-red-500/50';
+      case 'F':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+      case 'I':
+        return 'bg-purple-600/20 text-purple-300 border-purple-500/40';
       case 'H':
         return 'bg-slate-700/50 text-slate-200 border-slate-600/50';
       case 'COOH':
-      case 'CHO':
         return 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40 font-bold';
+      case 'CHO':
+        return 'bg-orange-500/20 text-orange-200 border-orange-500/40 font-bold';
       case 'CH3':
-      case 'CH2OH':
+        return 'bg-slate-800 text-slate-300 border-slate-700';
+      case 'CH2CH3':
       case 'C2H5':
-        return 'bg-indigo-500/20 text-indigo-200 border-indigo-500/40';
+        return 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 font-bold';
+      case 'CH2OH':
+        return 'bg-teal-500/20 text-teal-200 border-teal-500/40';
+      case 'NH2':
+        return 'bg-blue-600/25 text-blue-200 border-blue-500/50 font-bold';
+      case 'Phenyl':
+      case 'Ph':
+        return 'bg-fuchsia-600/25 text-fuchsia-200 border-fuchsia-500/50 font-bold';
       default:
         return 'bg-slate-800 text-slate-200 border-slate-700';
     }
