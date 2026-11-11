@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Sphere, Cylinder, Text, Plane, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MolecularStructure3D } from '../../types/isomerism';
@@ -23,6 +24,8 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
   hasPOS = false,
   showPlaneAnnotations = true,
 }) => {
+  const planeMatRef = useRef<THREE.MeshStandardMaterial>(null);
+
   // Plane orientations
   const planeRotation: [number, number, number] =
     posPlane === 'xy'
@@ -30,6 +33,13 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
       : posPlane === 'yz'
       ? [0, Math.PI / 2, 0]
       : [Math.PI / 2, 0, 0];
+
+  // Dynamic shimmering wave for the genuine plane of symmetry
+  useFrame((state) => {
+    if (planeMatRef.current && isGenuinePOS) {
+      planeMatRef.current.opacity = 0.32 + Math.sin(state.clock.elapsedTime * 2.5) * 0.08;
+    }
+  });
 
   // Find reflection pairs across the plane of symmetry
   const reflectionPairs = useMemo(() => {
@@ -81,6 +91,7 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
           <group rotation={planeRotation}>
             <Plane args={[4.6, 4.6]}>
               <meshStandardMaterial
+                ref={planeMatRef}
                 color={isGenuinePOS ? '#10b981' : '#f43f5e'}
                 transparent
                 opacity={isGenuinePOS ? 0.32 : 0.22}

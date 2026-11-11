@@ -8,7 +8,7 @@ import { Play, Pause, RotateCcw, Zap, Compass, Info, ShieldAlert, Box, FileText,
 export const DihedralEnergyLab: React.FC = () => {
   const [molecule, setMolecule] = useState<'ethane' | 'propane' | 'butane' | 'glycol'>('butane');
   const [angle, setAngle] = useState<number>(180); // Default to anti 180
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'3d' | '2d-newman' | 'split'>('3d');
   const [cameraPerspective, setCameraPerspective] = useState<'perspective' | 'newman'>('perspective');
 
@@ -221,6 +221,7 @@ export const DihedralEnergyLab: React.FC = () => {
           {viewMode === '3d' && (
             <div className="relative h-full w-full min-h-[420px]">
               <MolecularCanvas
+                autoRotate={cameraPerspective !== 'newman'}
                 cameraPosition={cameraPerspective === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}
                 cameraTarget={[0, 0, 0]}
               >
@@ -260,6 +261,7 @@ export const DihedralEnergyLab: React.FC = () => {
               </div>
               <div className="relative rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden min-h-[350px]">
                 <MolecularCanvas
+                  autoRotate={cameraPerspective !== 'newman'}
                   cameraPosition={cameraPerspective === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}
                   cameraTarget={[0, 0, 0]}
                 >

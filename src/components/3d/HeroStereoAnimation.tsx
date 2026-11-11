@@ -59,7 +59,10 @@ export const HeroStereoAnimation: React.FC = () => {
   return (
     <div className="relative h-full min-h-[360px] sm:min-h-[440px] lg:min-h-[520px] w-full overflow-hidden">
       {/* 3D Canvas */}
-      <MolecularCanvas cameraPosition={viewMode === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}>
+      <MolecularCanvas
+        autoRotate={false}
+        cameraPosition={viewMode === 'newman' ? [0, 0, 4.8] : [0, 1.4, 4.6]}
+      >
         <AutoRotatingRotamer
           targetAngle={angle}
           moleculeType="butane"

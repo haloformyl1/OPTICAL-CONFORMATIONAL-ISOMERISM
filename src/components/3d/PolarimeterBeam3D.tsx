@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Sphere, Cylinder, Text, Box } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -11,6 +12,7 @@ export const PolarimeterBeam3D: React.FC<PolarimeterBeam3DProps> = ({
   rotationAngleDeg,
   analyzerAngleDeg,
 }) => {
+  const photonsRef = useRef<THREE.Group>(null);
   const rotRad = (rotationAngleDeg * Math.PI) / 180;
   const analyzerRad = (analyzerAngleDeg * Math.PI) / 180;
 
@@ -18,8 +20,31 @@ export const PolarimeterBeam3D: React.FC<PolarimeterBeam3DProps> = ({
   const deltaAngle = analyzerRad - rotRad;
   const transmissionFactor = Math.pow(Math.cos(deltaAngle), 2);
 
+  // Animate traveling photons across the optical bench
+  useFrame((state) => {
+    if (!photonsRef.current) return;
+    const t = state.clock.elapsedTime * 2.8;
+    photonsRef.current.children.forEach((child, i) => {
+      const offset = (t + i * 1.5) % 9;
+      child.position.x = -4.4 + offset;
+    });
+  });
+
   return (
     <group>
+      {/* Animated Traveling Light Pulses in 3D */}
+      <group ref={photonsRef}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Sphere key={i} args={[0.08, 16, 16]} position={[-4.4 + i * 1.5, 0, 0]}>
+            <meshStandardMaterial
+              color="#38bdf8"
+              emissive="#38bdf8"
+              emissiveIntensity={1.8}
+            />
+          </Sphere>
+        ))}
+      </group>
+
       {/* 1. Monochromatic Light Lamp (Sodium D-line 589 nm) */}
       <group position={[-4.5, 0, 0]}>
         <Sphere args={[0.55, 32, 32]}>

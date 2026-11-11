@@ -13,13 +13,17 @@ interface MolecularCanvasProps {
   ariaLabel?: string;
   frameloop?: 'always' | 'demand' | 'never';
   dpr?: number | [number, number];
+  autoRotate?: boolean;
+  autoRotateSpeed?: number;
 }
 
 const ResponsiveCameraRig: React.FC<{
   position: [number, number, number];
   target: [number, number, number];
   resetKey: number;
-}> = ({ position, target, resetKey }) => {
+  autoRotate?: boolean;
+  autoRotateSpeed?: number;
+}> = ({ position, target, resetKey, autoRotate = true, autoRotateSpeed = 0.8 }) => {
   const { camera, size, invalidate } = useThree();
 
   useEffect(() => {
@@ -54,6 +58,8 @@ const ResponsiveCameraRig: React.FC<{
         target={target}
         maxDistance={14}
         minDistance={1.8}
+        autoRotate={autoRotate}
+        autoRotateSpeed={autoRotateSpeed}
         makeDefault
       />
     </>
@@ -66,8 +72,10 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
   cameraTarget = [0, 0, 0],
   resetKey = 0,
   ariaLabel = 'Interactive 3D molecular stereochemistry model',
-  frameloop = 'demand',
+  frameloop = 'always',
   dpr = [1, 1.5],
+  autoRotate = true,
+  autoRotateSpeed = 0.8,
 }) => {
   const webGLAvailable = useMemo(() => {
     if (typeof document === 'undefined') return true;
@@ -104,6 +112,8 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
           position={cameraPosition}
           target={cameraTarget}
           resetKey={resetKey}
+          autoRotate={autoRotate}
+          autoRotateSpeed={autoRotateSpeed}
         />
 
         <ambientLight intensity={0.7} />

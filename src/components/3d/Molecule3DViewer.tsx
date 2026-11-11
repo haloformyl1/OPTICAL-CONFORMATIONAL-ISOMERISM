@@ -1,8 +1,30 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Sphere, Cylinder, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MolecularStructure3D, Atom3D, Bond3D } from '../../types/isomerism';
 import { getElementColor, getElementRadius } from '../../utils/chemistry';
+
+const StereocenterHalo: React.FC<{ radius: number }> = ({ radius }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 0.9;
+      meshRef.current.rotation.x += delta * 0.45;
+    }
+  });
+
+  return (
+    <Sphere ref={meshRef} args={[radius, 16, 16]}>
+      <meshStandardMaterial
+        color="#c084fc"
+        transparent
+        opacity={0.25}
+        wireframe
+      />
+    </Sphere>
+  );
+};
 
 interface Molecule3DViewerProps {
   structure: MolecularStructure3D;
@@ -91,16 +113,9 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
 
         return (
           <group key={atom.id} position={atom.position}>
-            {/* Stereocenter subtle aura halo */}
+            {/* Stereocenter rotating aura halo in 3D */}
             {atom.isStereocenter && (
-              <Sphere args={[baseRadius * 1.25, 16, 16]}>
-                <meshStandardMaterial
-                  color="#c084fc"
-                  transparent
-                  opacity={0.15}
-                  wireframe
-                />
-              </Sphere>
+              <StereocenterHalo radius={baseRadius * 1.3} />
             )}
 
             {/* Core Atom Sphere */}

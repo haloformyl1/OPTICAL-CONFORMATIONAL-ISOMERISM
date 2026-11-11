@@ -9,8 +9,8 @@ import { Sparkles, Eye, RotateCw, CheckCircle2, ChevronRight, HelpCircle, Layers
 
 export const CIPPriorityLab: React.FC = () => {
   const [selectedExampleIndex, setSelectedExampleIndex] = useState(0); // Lactic acid
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
-  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(4);
+  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('3d');
 
   const currentExample = OPTICAL_EXAMPLES[selectedExampleIndex] || OPTICAL_EXAMPLES[0];
   const structure = currentExample.isomerA.structure;
@@ -36,7 +36,7 @@ export const CIPPriorityLab: React.FC = () => {
             value={selectedExampleIndex}
             onChange={(e) => {
               setSelectedExampleIndex(Number(e.target.value));
-              setActiveStep(1);
+              setActiveStep(4);
             }}
             className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer"
           >
@@ -117,10 +117,10 @@ export const CIPPriorityLab: React.FC = () => {
                 <Molecule3DViewer
                   structure={structure}
                   showLabels={true}
-                  showPriorityBadges={activeStep >= 2}
+                  showPriorityBadges={true}
                 />
                 {/* 3D Animated Direction Arc (1 -> 2 -> 3) with Traveling Energy Beads & Arrowheads */}
-                <CIPArc3D structure={structure} visible={activeStep === 4} />
+                <CIPArc3D structure={structure} visible={true} />
               </MolecularCanvas>
 
               {/* Configuration Badge Overlay */}
@@ -138,10 +138,9 @@ export const CIPPriorityLab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Animated Clock / Anti-Clock Count Direction HUD Card in Step 4 */}
-              {activeStep === 4 && (
-                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-[#061524]/90 p-3 backdrop-blur-md shadow-2xl max-w-[340px]">
-                  {/* Rotating Compass / Clock Dial Animation */}
+              {/* Animated Clock / Anti-Clock Count Direction HUD Card */}
+              <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-[#061524]/90 p-3 backdrop-blur-md shadow-2xl max-w-[340px]">
+                {/* Rotating Compass / Clock Dial Animation */}
                   <div className="relative flex items-center justify-center w-14 h-14 shrink-0">
                     <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
                       {/* Dial Face */}
@@ -208,7 +207,6 @@ export const CIPPriorityLab: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
             </div>
           )}
 

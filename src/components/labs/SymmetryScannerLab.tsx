@@ -13,7 +13,7 @@ export const SymmetryScannerLab: React.FC = () => {
   const [posPlane, setPosPlane] = useState<'xy' | 'yz' | 'xz'>('xz');
   const [showCOS, setShowCOS] = useState(false);
   const [showAnnotations, setShowAnnotations] = useState(true);
-  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
+  const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('3d');
 
   // Available curated test molecules
   const testMolecules = [

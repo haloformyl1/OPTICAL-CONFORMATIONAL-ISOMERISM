@@ -9,9 +9,30 @@ import { ArrowLeftRight, CheckCircle2, XCircle, RotateCw, Layers, ShieldCheck, S
 export const EnantiomerCompareLab: React.FC = () => {
   const [selectedPairIndex, setSelectedPairIndex] = useState(1); // Default to Tartaric Acid
   const [superimposeProgress, setSuperimposeProgress] = useState<number>(0); // 0 = separate, 1 = overlaid
+  const [isAutoSuperimposing, setIsAutoSuperimposing] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'3d' | '2d-fischer' | 'split'>('3d');
   const [showLabels, setShowLabels] = useState(true);
-  const [showPriorityBadges, setShowPriorityBadges] = useState(false);
+  const [showPriorityBadges, setShowPriorityBadges] = useState(true);
+
+  // Smooth continuous auto-superposition animation by default
+  React.useEffect(() => {
+    if (!isAutoSuperimposing) return;
+    let animId: number;
+    let startTime: number | null = null;
+    const duration = 4000;
+
+    const loop = (time: number) => {
+      if (startTime === null) startTime = time;
+      const elapsed = (time - startTime) % duration;
+      const t = elapsed / duration;
+      const p = Math.sin(t * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5;
+      setSuperimposeProgress(p);
+      animId = requestAnimationFrame(loop);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [isAutoSuperimposing]);
 
   const testPairs = [
     { label: "(R)- vs (S)-Lactic Acid [Enantiomers]", pair: OPTICAL_EXAMPLES[0], rel: "enantiomers" as const },
@@ -121,11 +142,23 @@ export const EnantiomerCompareLab: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setSuperimposeProgress(superimposeProgress > 0.5 ? 0 : 1)}
+                onClick={() => {
+                  if (isAutoSuperimposing) {
+                    setIsAutoSuperimposing(false);
+                  } else {
+                    setSuperimposeProgress(superimposeProgress > 0.5 ? 0 : 1);
+                  }
+                }}
                 className="flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/30 cursor-pointer"
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" />
-                <span>{superimposeProgress > 0.5 ? 'Separate' : 'Attempt 3D Superposition'}</span>
+                <span>
+                  {isAutoSuperimposing
+                    ? '⏸ Auto-Superposing (Pause)'
+                    : superimposeProgress > 0.5
+                    ? 'Separate'
+                    : '▶ Auto-Superpose (Play)'}
+                </span>
               </button>
             </div>
           )}
