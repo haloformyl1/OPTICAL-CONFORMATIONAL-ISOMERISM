@@ -280,14 +280,39 @@ export const CIPPriorityLab: React.FC = () => {
                 <p className="text-slate-300 text-[11px] leading-relaxed">
                   Trace the curved arrow from Priority 1 to Priority 2 to Priority 3:
                 </p>
-                <div className="mt-2 p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] space-y-1">
-                  <div className="text-cyan-300 font-bold">
-                    ↻ Clockwise = (R) [Rectus, Right]
+
+                {viewMode === '2d' ? (
+                  <div className="mt-2 p-2.5 rounded-xl bg-slate-900 border border-cyan-500/30 text-[11px] space-y-2">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                      <span className="text-slate-300">1 → 2 → 3 Arc Direction:</span>
+                      <span className="font-black text-pink-300">↺ Counter-Clockwise</span>
+                    </div>
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                      <span className="text-slate-300">Apparent Result:</span>
+                      <span className="font-bold text-slate-400">Apparent (S)</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[10px] leading-snug">
+                      <div className="font-bold text-amber-300 mb-0.5">
+                        ⚠️ Horizontal Bond Rule (Reversal):
+                      </div>
+                      Group 4 (H) is on a <strong>HORIZONTAL</strong> bond (pointing towards you).
+                      <div className="mt-1.5 pt-1 border-t border-amber-500/30 font-black text-emerald-300 text-xs">
+                        ↺ Counter-Clockwise ➔ REVERSE to (R) [Rectus]!
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-pink-300 font-bold">
-                    ↺ Counter-Clockwise = (S) [Sinister, Left]
+                ) : (
+                  <div className="mt-2 p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] space-y-1">
+                    <div className="text-emerald-300 font-bold flex items-center justify-between">
+                      <span>↻ Clockwise (4 in back)</span>
+                      <span>= (R) [Rectus]</span>
+                    </div>
+                    <div className="text-pink-300 font-bold flex items-center justify-between">
+                      <span>↺ Counter-Clockwise</span>
+                      <span>= (S) [Sinister]</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
