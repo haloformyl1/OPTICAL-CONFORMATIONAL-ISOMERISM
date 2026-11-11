@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { MolecularCanvas } from '../3d/MolecularCanvas';
 import { Molecule3DViewer } from '../3d/Molecule3DViewer';
+import { CIPArc3D } from '../3d/CIPArc3D';
 import { CIPProjection2D } from '../2d/CIPProjection2D';
 import { BilingualText } from '../BilingualText';
 import { OPTICAL_EXAMPLES } from '../../content/examples/opticalExamples';
-import { Sparkles, Eye, RotateCw, CheckCircle2, ChevronRight, HelpCircle, Layers } from 'lucide-react';
+import { Sparkles, Eye, RotateCw, CheckCircle2, ChevronRight, HelpCircle, Layers, Compass } from 'lucide-react';
 
 export const CIPPriorityLab: React.FC = () => {
   const [selectedExampleIndex, setSelectedExampleIndex] = useState(0); // Lactic acid
@@ -13,6 +14,7 @@ export const CIPPriorityLab: React.FC = () => {
 
   const currentExample = OPTICAL_EXAMPLES[selectedExampleIndex] || OPTICAL_EXAMPLES[0];
   const structure = currentExample.isomerA.structure;
+  const isClockwise = structure.optical?.configurationRS?.includes('R') ?? true;
 
   // Map selected example to CIP 2D preset if available
   const get2DPresetId = () => {
@@ -117,6 +119,8 @@ export const CIPPriorityLab: React.FC = () => {
                   showLabels={true}
                   showPriorityBadges={activeStep >= 2}
                 />
+                {/* 3D Animated Direction Arc (1 -> 2 -> 3) with Traveling Energy Beads & Arrowheads */}
+                <CIPArc3D structure={structure} visible={activeStep === 4} />
               </MolecularCanvas>
 
               {/* Configuration Badge Overlay */}
@@ -129,12 +133,82 @@ export const CIPPriorityLab: React.FC = () => {
                     {structure.optical?.configurationRS || '(R)'}
                   </h4>
                   <p className="text-[11px] text-cyan-300">
-                    {structure.optical?.configurationRS?.includes('R')
-                      ? 'Clockwise (1 → 2 → 3)'
-                      : 'Counter-Clockwise (1 → 2 → 3)'}
+                    {isClockwise ? 'Clockwise (1 → 2 → 3)' : 'Counter-Clockwise (1 → 2 → 3)'}
                   </p>
                 </div>
               </div>
+
+              {/* Animated Clock / Anti-Clock Count Direction HUD Card in Step 4 */}
+              {activeStep === 4 && (
+                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-[#061524]/90 p-3 backdrop-blur-md shadow-2xl max-w-[340px]">
+                  {/* Rotating Compass / Clock Dial Animation */}
+                  <div className="relative flex items-center justify-center w-14 h-14 shrink-0">
+                    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                      {/* Dial Face */}
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="44"
+                        fill="#082032"
+                        stroke={isClockwise ? '#10b981' : '#ec4899'}
+                        strokeWidth="3.5"
+                      />
+                      {/* Priority position ticks */}
+                      <text x="50" y="24" fill="#ef4444" fontSize="13" fontWeight="900" textAnchor="middle">1</text>
+                      <text x="80" y="74" fill="#f59e0b" fontSize="13" fontWeight="900" textAnchor="middle">2</text>
+                      <text x="20" y="74" fill="#3b82f6" fontSize="13" fontWeight="900" textAnchor="middle">3</text>
+                      <circle cx="50" cy="50" r="3.5" fill="#ffffff" />
+
+                      {/* Continuous Sweeping Arc Arrow (Clockwise vs Counter-Clockwise) */}
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="32"
+                        fill="none"
+                        stroke={isClockwise ? '#34d399' : '#f472b6'}
+                        strokeWidth="5"
+                        strokeDasharray="50 150"
+                        style={{
+                          animation: isClockwise
+                            ? 'spin 2.2s linear infinite'
+                            : 'spin 2.2s linear infinite reverse',
+                          transformOrigin: '50px 50px',
+                        }}
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Informational Text */}
+                  <div className="flex flex-col">
+                    <span
+                      className={`text-xs font-black uppercase tracking-wider ${
+                        isClockwise ? 'text-emerald-400' : 'text-pink-400'
+                      }`}
+                    >
+                      {isClockwise ? '↻ CLOCKWISE COUNT' : '↺ ANTI-CLOCKWISE COUNT'}
+                    </span>
+                    <p className="text-[11px] font-bold text-slate-200 mt-0.5">
+                      Priority sequence: 1 → 2 → 3
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[10px] text-slate-300">
+                        {isClockwise
+                          ? 'ঘড়ির কাঁটার দিকে (ডানাবর্ত)'
+                          : 'ঘড়ির কাঁটার বিপরীত দিকে (বামাবর্ত)'}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded font-black text-xs ${
+                          isClockwise
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
+                        }`}
+                      >
+                        {isClockwise ? '(R) Rectus' : '(S) Sinister'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
