@@ -16,12 +16,14 @@ import { EnantiomerCompareLab } from '../components/labs/EnantiomerCompareLab';
 import { CIPPriorityLab } from '../components/labs/CIPPriorityLab';
 import { ExceptionalCasesLab } from '../components/labs/ExceptionalCasesLab';
 import { PolarimeterLab } from '../components/labs/PolarimeterLab';
+import { ChiralLockLab } from '../components/labs/ChiralLockLab';
 
 export const ModuleView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const moduleData = getModuleById(id || '');
   const { markModuleCompleted, completedModules } = useStore();
+  const [cipSubTab, setCipSubTab] = React.useState<'cip' | 'lock'>('lock');
 
   if (!moduleData) {
     return <Navigate to="/learn" replace />;
@@ -96,10 +98,43 @@ export const ModuleView: React.FC = () => {
         <FullscreenInteractiveFrame
           title={<BilingualText en={moduleData.title.en} bn={moduleData.title.bn} />}
         >
-          <div className="h-[520px] w-full overflow-hidden">
+          <div className="h-[580px] w-full overflow-hidden">
             {moduleData.id === '00-symmetry-chirality' && <SymmetryScannerLab />}
             {moduleData.id === '01-enantiomers-diastereomers' && <EnantiomerCompareLab />}
-            {moduleData.id === '02-cip-rs-system' && <CIPPriorityLab />}
+            {moduleData.id === '02-cip-rs-system' && (
+              <div className="flex flex-col h-full w-full">
+                <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/90 px-4 py-2 shrink-0">
+                  <span className="text-[11px] font-mono text-slate-400 font-bold uppercase mr-1">
+                    Interactive Tools:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCipSubTab('lock')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      cipSubTab === 'lock'
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    1. The Chiral Lock (Bond Rotations vs Swaps)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCipSubTab('cip')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      cipSubTab === 'cip'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    2. Step-by-Step CIP Priority Solver
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {cipSubTab === 'lock' ? <ChiralLockLab /> : <CIPPriorityLab />}
+                </div>
+              </div>
+            )}
             {moduleData.id === '03-conformational-acyclic' && <DihedralEnergyLab />}
             {moduleData.id === '04-conformational-cyclic' && <CyclohexaneLab />}
             {moduleData.id === '05-exceptional-optical' && <ExceptionalCasesLab />}

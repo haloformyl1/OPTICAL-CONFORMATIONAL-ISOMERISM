@@ -1,16 +1,17 @@
 import React from 'react';
-import { FlaskConical, Orbit, Layers, Sparkles, Flame, ShieldAlert, Compass } from 'lucide-react';
+import { FlaskConical, Orbit, Layers, Sparkles, Flame, ShieldAlert, Compass, Lock } from 'lucide-react';
 import { BilingualText } from '../components/BilingualText';
 import { PageContainer, PageHeader, SectionHeader } from '../components/ui/LayoutPrimitives';
 import { FullscreenInteractiveFrame } from '../components/ui/FullscreenInteractiveFrame';
 
-// 6 Specialized 3D Labs
+// 7 Specialized 3D & 2D Labs
 import { DihedralEnergyLab } from '../components/labs/DihedralEnergyLab';
 import { CyclohexaneLab } from '../components/labs/CyclohexaneLab';
 import { SymmetryScannerLab } from '../components/labs/SymmetryScannerLab';
 import { EnantiomerCompareLab } from '../components/labs/EnantiomerCompareLab';
 import { CIPPriorityLab } from '../components/labs/CIPPriorityLab';
 import { PolarimeterLab } from '../components/labs/PolarimeterLab';
+import { ChiralLockLab } from '../components/labs/ChiralLockLab';
 
 const labSections = [
   {
@@ -54,6 +55,13 @@ const labSections = [
     subtitle: <BilingualText en="Rotate the analyzer prism to measure observed rotation, specific rotation [α], and enantiomeric excess (ee)." bn="অ্যানালাইজার প্রিজম ঘুরিয়ে পরীক্ষিত ঘূর্ণন, আপেক্ষিক ঘূর্ণন [α] এবং এন্যানশিওমারিক এক্সেস (ee) পরিমাপ করুন।" />,
     icon: FlaskConical,
     content: <PolarimeterLab />,
+  },
+  {
+    id: 'chiral-lock',
+    title: <BilingualText en="The Chiral Center 'Physical Lock' Simulator" bn="কাইরাল কেন্দ্র 'ফিজিক্যাল লক' সিমুলেটর" />,
+    subtitle: <BilingualText en="Prove that single bond propeller rotation preserves (R)/(S) configuration, while breaking bonds (swapping groups) inverts it into an enantiomer." bn="প্রমাণ করুন যে একক বন্ধন ঘূর্ণন (R)/(S) কনফিগারেশন অপরিবর্তিত রাখে, যেখানে বন্ধন ভাঙন (গ্রুপ অদলবদল) এটিকে এন্যানশিওমারে রূপান্তরিত করে।" />,
+    icon: Lock,
+    content: <ChiralLockLab />,
   },
 ];
 
