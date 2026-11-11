@@ -171,7 +171,11 @@ export const EnantiomerCompareLab: React.FC = () => {
         <div className="relative h-full w-full min-h-[360px] overflow-y-auto bg-gradient-to-b from-[#05111e] to-[#08182b]">
           {viewMode === '2d-fischer' && (
             <div className="p-4 sm:p-6 h-full flex flex-col justify-center">
-              <FischerProjection2D pairIndex={selectedPairIndex} />
+              <FischerProjection2D
+                pairIndex={selectedPairIndex}
+                externalProgress={superimposeProgress}
+                onProgressChange={setSuperimposeProgress}
+              />
             </div>
           )}
 
@@ -212,7 +216,11 @@ export const EnantiomerCompareLab: React.FC = () => {
           {viewMode === 'split' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 h-full gap-4 p-4">
               <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2 overflow-y-auto min-h-[350px]">
-                <FischerProjection2D pairIndex={selectedPairIndex} />
+                <FischerProjection2D
+                  pairIndex={selectedPairIndex}
+                  externalProgress={superimposeProgress}
+                  onProgressChange={setSuperimposeProgress}
+                />
               </div>
               <div className="relative rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden min-h-[350px]">
                 <MolecularCanvas cameraPosition={[0, 1.2, 5.2]}>

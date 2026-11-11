@@ -145,12 +145,21 @@ export const FISCHER_PAIRS_DATA: Record<number, FischerMoleculeData> = {
 
 interface FischerProjection2DProps {
   pairIndex?: number;
+  externalProgress?: number;
+  onProgressChange?: (p: number) => void;
 }
 
-export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIndex = 1 }) => {
+export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({
+  pairIndex = 1,
+  externalProgress,
+  onProgressChange,
+}) => {
   const [showWedgeDash, setShowWedgeDash] = useState(false);
   const [rotated180B, setRotated180B] = useState(false);
-  const [superimposeX, setSuperimposeX] = useState(0); // 0 (separated) to 1 (full overlay)
+  const [internalSuperimposeX, setInternalSuperimposeX] = useState(0);
+
+  const superimposeX = externalProgress !== undefined ? externalProgress : internalSuperimposeX;
+  const setSuperimposeX = onProgressChange || setInternalSuperimposeX;
 
   const data = FISCHER_PAIRS_DATA[pairIndex] || FISCHER_PAIRS_DATA[1];
   const numCenters = data.centers.length;
@@ -179,167 +188,386 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
     }
   };
 
+  // Symmetric Vertical Geometry:
+  // Center is exactly svgHeight / 2.
+  // 180° rotation around (130, svgHeight / 2) maps top <-> bottom and center i <-> center (N - 1 - i).
+  const rungGap = 80;
+  const topGroupY = 35;
+  const svgHeight = 70 + (numCenters + 1) * rungGap;
+  const centerY = svgHeight / 2;
+
+  // Comparison logic accounting for 180° in-plane rotation of Molecule B
+  const topMatches = data.topGroup === (rotated180B ? data.bottomGroup : data.topGroup);
+  const bottomMatches = data.bottomGroup === (rotated180B ? data.topGroup : data.bottomGroup);
+
+  const centerMatches = data.centers.map((cA, idx) => {
+    const origB = rotated180B ? data.centers[numCenters - 1 - idx] : data.centers[idx];
+    const screenLeftB = rotated180B ? origB.rightB : origB.leftB;
+    const screenRightB = rotated180B ? origB.leftB : origB.rightB;
+
+    const leftMatch = cA.leftA === screenLeftB;
+    const rightMatch = cA.rightA === screenRightB;
+    return {
+      leftMatch,
+      rightMatch,
+      allMatch: leftMatch && rightMatch,
+      screenLeftB,
+      screenRightB,
+    };
+  });
+
+  const isSuperimposing = superimposeX > 0.6;
+  const clashProgress = Math.max(0, Math.min(1, (superimposeX - 0.6) / 0.4));
+
   const renderSingleFischer = (
     isomerKey: 'A' | 'B',
     isRotated: boolean,
     labelTitle: string,
     badgeColor: string
   ) => {
-    // Height calculation:
-    // top group -> rung 1 -> rung 2 -> bottom group
-    const rungGap = 85;
-    const totalHeight = 100 + numCenters * rungGap;
+    // Card background transparency during overlay
+    const bgAlpha = Math.max(0, 0.75 * (1 - superimposeX * 1.5));
+    const borderAlpha = Math.max(0, 0.8 * (1 - superimposeX * 1.5));
 
     return (
       <div
-        className="flex flex-col items-center p-4 rounded-2xl border border-slate-800/80 bg-slate-950/70 shadow-xl backdrop-blur-md relative transition-transform duration-500"
+        className="flex flex-col items-center p-3 sm:p-4 rounded-2xl border transition-all duration-300 relative"
         style={{
-          transform: isRotated ? 'rotate(180deg)' : 'none',
+          backgroundColor: superimposeX > 0.05 ? `rgba(2, 6, 23, ${bgAlpha})` : undefined,
+          borderColor: superimposeX > 0.05 ? `rgba(30, 41, 59, ${borderAlpha})` : undefined,
+          boxShadow: superimposeX > 0.5 ? 'none' : undefined,
         }}
       >
+        {/* Isomer Title Badge (Fades out when superimposing to prevent collision) */}
         <span
-          className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full border mb-4 ${badgeColor}`}
-          style={{ transform: isRotated ? 'rotate(180deg)' : 'none' }}
+          className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full border mb-3 transition-opacity duration-300 ${badgeColor}`}
+          style={{
+            opacity: Math.max(0, 1 - superimposeX * 1.6),
+          }}
         >
-          {labelTitle} {isRotated ? '(180° In-Plane Rotated)' : ''}
+          {labelTitle} {isRotated ? '(180° Rotated)' : ''}
         </span>
 
-        <svg width="260" height={totalHeight} className="overflow-visible">
-          {/* Central Vertical Backbone Line */}
-          {showWedgeDash ? (
-            // Dashed backbone representing bonds going into the page (away from viewer)
-            <line
-              x1="130"
-              y1="35"
-              x2="130"
-              y2={totalHeight - 35}
-              stroke="#38bdf8"
-              strokeWidth="4"
-              strokeDasharray="6,4"
-            />
-          ) : (
-            <line
-              x1="130"
-              y1="35"
-              x2="130"
-              y2={totalHeight - 35}
-              stroke="#64748b"
-              strokeWidth="3.5"
-            />
-          )}
-
-          {/* Meso Plane of Symmetry (σ) line if applicable */}
-          {isMeso && numCenters === 2 && (
-            <g>
+        {/* SVG Container with 180° in-plane rotation support */}
+        <div
+          style={{
+            transform: isRotated ? 'rotate(180deg)' : 'none',
+            transformOrigin: '130px center',
+            transition: 'transform 0.5s ease-in-out',
+          }}
+        >
+          <svg width="260" height={svgHeight} className="overflow-visible">
+            {/* Central Vertical Backbone Line */}
+            {showWedgeDash ? (
+              // Dashed backbone representing bonds going into the page (away from viewer)
               <line
-                x1="20"
-                y1={35 + rungGap}
-                x2="240"
-                y2={35 + rungGap}
-                stroke="#10b981"
-                strokeWidth="2.5"
-                strokeDasharray="5,3"
-                className="animate-pulse"
+                x1="130"
+                y1={topGroupY}
+                x2="130"
+                y2={svgHeight - topGroupY}
+                stroke={superimposeX > 0.4 ? (isomerKey === 'A' ? '#38bdf8' : '#c084fc') : '#38bdf8'}
+                strokeWidth={superimposeX > 0.5 ? '4.5' : '4'}
+                strokeDasharray="6,4"
               />
-              <text
-                x="245"
-                y={35 + rungGap + 4}
-                fill="#34d399"
-                fontSize="10"
-                fontFamily="monospace"
-                fontWeight="bold"
-              >
-                σ (POS)
-              </text>
-            </g>
-          )}
+            ) : (
+              <line
+                x1="130"
+                y1={topGroupY}
+                x2="130"
+                y2={svgHeight - topGroupY}
+                stroke={
+                  superimposeX > 0.4
+                    ? (isomerKey === 'A' ? '#06b6d4' : '#c084fc')
+                    : '#64748b'
+                }
+                strokeWidth={superimposeX > 0.5 ? '4' : '3.5'}
+              />
+            )}
 
-          {/* Top Group */}
-          <foreignObject x="80" y="2" width="100" height="34">
-            <div className="flex justify-center items-center h-full">
-              <span className={`px-2.5 py-0.5 rounded-lg border text-xs font-mono font-bold ${getGroupBadgeColor(data.topGroup)}`}>
-                {data.topGroup}
-              </span>
-            </div>
-          </foreignObject>
-
-          {/* Horizontal Rungs (Chiral Centers) */}
-          {data.centers.map((c, idx) => {
-            const y = 35 + (idx + 0.5) * rungGap;
-            const leftGrp = isomerKey === 'A' ? c.leftA : c.leftB;
-            const rightGrp = isomerKey === 'A' ? c.rightA : c.rightB;
-            const config = isomerKey === 'A' ? c.configA : c.configB;
-
-            return (
-              <g key={c.carbonNum}>
-                {/* Horizontal Rung */}
-                {showWedgeDash ? (
-                  // Solid Wedges coming out of page (toward viewer)
-                  <g>
-                    {/* Left Wedge */}
-                    <polygon
-                      points={`130,${y} 55,${y - 6} 55,${y + 6}`}
-                      fill="#38bdf8"
-                      opacity="0.9"
-                    />
-                    {/* Right Wedge */}
-                    <polygon
-                      points={`130,${y} 205,${y - 6} 205,${y + 6}`}
-                      fill="#38bdf8"
-                      opacity="0.9"
-                    />
-                  </g>
-                ) : (
-                  <line
-                    x1="55"
-                    y1={y}
-                    x2="205"
-                    y2={y}
-                    stroke="#94a3b8"
-                    strokeWidth="3.5"
-                  />
-                )}
-
-                {/* Central Chiral Carbon Point & Config Badge */}
-                <circle cx="130" cy={y} r="5" fill="#c084fc" />
-                <foreignObject x="110" y={y - 24} width="40" height="20">
-                  <div className="flex justify-center">
-                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-purple-950/90 text-purple-300 border border-purple-500/40">
-                      C{c.carbonNum}({config})
-                    </span>
-                  </div>
-                </foreignObject>
-
-                {/* Left Group */}
-                <foreignObject x="0" y={y - 14} width="55" height="28">
-                  <div className="flex justify-end items-center h-full pr-1">
-                    <span className={`px-2 py-0.5 rounded-lg border text-xs font-mono font-bold ${getGroupBadgeColor(leftGrp)}`}>
-                      {leftGrp}
-                    </span>
-                  </div>
-                </foreignObject>
-
-                {/* Right Group */}
-                <foreignObject x="205" y={y - 14} width="55" height="28">
-                  <div className="flex justify-start items-center h-full pl-1">
-                    <span className={`px-2 py-0.5 rounded-lg border text-xs font-mono font-bold ${getGroupBadgeColor(rightGrp)}`}>
-                      {rightGrp}
-                    </span>
-                  </div>
-                </foreignObject>
+            {/* Meso Plane of Symmetry (σ) line if applicable */}
+            {isMeso && numCenters === 2 && (
+              <g>
+                <line
+                  x1="20"
+                  y1={centerY}
+                  x2="240"
+                  y2={centerY}
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  strokeDasharray="5,3"
+                  className="animate-pulse"
+                />
+                <text
+                  x="242"
+                  y={centerY + 4}
+                  fill="#34d399"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  σ (POS)
+                </text>
               </g>
-            );
-          })}
+            )}
 
-          {/* Bottom Group */}
-          <foreignObject x="80" y={totalHeight - 34} width="100" height="34">
-            <div className="flex justify-center items-center h-full">
-              <span className={`px-2.5 py-0.5 rounded-lg border text-xs font-mono font-bold ${getGroupBadgeColor(data.bottomGroup)}`}>
-                {data.bottomGroup}
-              </span>
-            </div>
-          </foreignObject>
-        </svg>
+            {/* Top Group */}
+            {(() => {
+              const matches = topMatches;
+              const isHidden = isomerKey === 'B' && matches && superimposeX >= 0.85;
+              const shiftY = matches
+                ? 0
+                : (isomerKey === 'A' ? -10 : (isRotated ? 10 : 10)) * clashProgress;
+
+              return (
+                <foreignObject
+                  x="70"
+                  y={topGroupY - 16}
+                  width="120"
+                  height="34"
+                  style={{ opacity: isHidden ? 0 : 1 }}
+                >
+                  <div
+                    className="flex justify-center items-center h-full transition-transform duration-200"
+                    style={{
+                      transform: `${isRotated ? 'rotate(180deg)' : ''} translateY(${shiftY}px)`,
+                    }}
+                  >
+                    <span
+                      className={`px-2.5 py-0.5 rounded-lg border text-xs font-mono font-bold transition-all ${
+                        superimposeX >= 0.85 && matches
+                          ? 'border-emerald-400 bg-emerald-950/90 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)]'
+                          : superimposeX >= 0.85
+                          ? (isomerKey === 'A'
+                              ? 'border-cyan-400 bg-cyan-950/90 text-cyan-300'
+                              : 'border-purple-400 bg-purple-950/90 text-purple-300')
+                          : getGroupBadgeColor(data.topGroup)
+                      }`}
+                    >
+                      {superimposeX >= 0.85 && matches
+                        ? `✓ ${data.topGroup}`
+                        : superimposeX >= 0.85
+                        ? `${isomerKey}: ${data.topGroup}`
+                        : data.topGroup}
+                    </span>
+                  </div>
+                </foreignObject>
+              );
+            })()}
+
+            {/* Horizontal Rungs (Chiral Centers) */}
+            {data.centers.map((c, idx) => {
+              const y = topGroupY + (idx + 1) * rungGap;
+              const leftGrp = isomerKey === 'A' ? c.leftA : c.leftB;
+              const rightGrp = isomerKey === 'A' ? c.rightA : c.rightB;
+              const config = isomerKey === 'A' ? c.configA : c.configB;
+
+              const cMatch = centerMatches[idx];
+              const leftMatches = cMatch?.leftMatch ?? false;
+              const rightMatches = cMatch?.rightMatch ?? false;
+              const rungMatches = cMatch?.allMatch ?? false;
+
+              // Compute clash vertical shifts to prevent overlapping text
+              // Molecule A shifts UP, Molecule B shifts DOWN in screen space
+              const leftShift = leftMatches
+                ? 0
+                : (isomerKey === 'A' ? -12 : (isRotated ? -12 : 12)) * clashProgress;
+              const rightShift = rightMatches
+                ? 0
+                : (isomerKey === 'A' ? -12 : (isRotated ? -12 : 12)) * clashProgress;
+
+              // When superimposed and matching, hide B's badge so A renders the unified check badge
+              const hideLeftB = isomerKey === 'B' && leftMatches && superimposeX >= 0.85;
+              const hideRightB = isomerKey === 'B' && rightMatches && superimposeX >= 0.85;
+
+              return (
+                <g key={c.carbonNum}>
+                  {/* Horizontal Rung */}
+                  {showWedgeDash ? (
+                    // Solid Wedges coming out of page (toward viewer)
+                    <g>
+                      {/* Left Wedge */}
+                      <polygon
+                        points={`130,${y} 55,${y - 6} 55,${y + 6}`}
+                        fill={superimposeX > 0.4 ? (isomerKey === 'A' ? '#38bdf8' : '#c084fc') : '#38bdf8'}
+                        opacity="0.9"
+                      />
+                      {/* Right Wedge */}
+                      <polygon
+                        points={`130,${y} 205,${y - 6} 205,${y + 6}`}
+                        fill={superimposeX > 0.4 ? (isomerKey === 'A' ? '#38bdf8' : '#c084fc') : '#38bdf8'}
+                        opacity="0.9"
+                      />
+                    </g>
+                  ) : (
+                    <line
+                      x1="55"
+                      y1={y}
+                      x2="205"
+                      y2={y}
+                      stroke={
+                        superimposeX > 0.4
+                          ? (isomerKey === 'A' ? '#0ea5e9' : '#d946ef')
+                          : '#94a3b8'
+                      }
+                      strokeWidth={superimposeX > 0.5 ? '4' : '3.5'}
+                    />
+                  )}
+
+                  {/* Central Chiral Carbon Point */}
+                  <circle
+                    cx="130"
+                    cy={y}
+                    r={superimposeX > 0.5 ? 6 : 5}
+                    fill={
+                      superimposeX >= 0.85
+                        ? (rungMatches ? '#34d399' : '#f43f5e')
+                        : (isomerKey === 'A' ? '#38bdf8' : '#c084fc')
+                    }
+                  />
+
+                  {/* Central Chiral Carbon Config Badge */}
+                  {/* Only rendered by Molecule A when superimposed to avoid text collision */}
+                  {!(isomerKey === 'B' && superimposeX >= 0.7) && (
+                    <foreignObject x="85" y={y - 25} width="90" height="24">
+                      <div
+                        className="flex justify-center items-center h-full"
+                        style={{ transform: isRotated ? 'rotate(180deg)' : 'none' }}
+                      >
+                        {superimposeX >= 0.85 ? (
+                          rungMatches ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-950/95 text-emerald-300 border border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.3)] whitespace-nowrap">
+                              ✓ C{c.carbonNum} Match
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-950/95 text-rose-300 border border-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.3)] whitespace-nowrap">
+                              ⚠️ C{c.carbonNum} Clash
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-purple-950/90 text-purple-300 border border-purple-500/40">
+                            C{c.carbonNum}({config})
+                          </span>
+                        )}
+                      </div>
+                    </foreignObject>
+                  )}
+
+                  {/* Left Group */}
+                  <foreignObject
+                    x="0"
+                    y={y - 14}
+                    width="60"
+                    height="28"
+                    style={{ opacity: hideLeftB ? 0 : 1 }}
+                  >
+                    <div
+                      className="flex justify-end items-center h-full pr-1 transition-transform duration-200"
+                      style={{
+                        transform: `${isRotated ? 'rotate(180deg)' : ''} translateY(${leftShift}px)`,
+                      }}
+                    >
+                      <span
+                        className={`px-2 py-0.5 rounded-lg border text-xs font-mono font-bold transition-all ${
+                          superimposeX >= 0.85 && leftMatches
+                            ? 'border-emerald-400 bg-emerald-950/90 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                            : superimposeX >= 0.85
+                            ? (isomerKey === 'A'
+                                ? 'border-cyan-400 bg-cyan-950/90 text-cyan-300'
+                                : 'border-purple-400 bg-purple-950/90 text-purple-300')
+                            : getGroupBadgeColor(leftGrp)
+                        }`}
+                      >
+                        {superimposeX >= 0.85 && leftMatches
+                          ? `✓ ${leftGrp}`
+                          : superimposeX >= 0.85
+                          ? `${isomerKey}: ${leftGrp}`
+                          : leftGrp}
+                      </span>
+                    </div>
+                  </foreignObject>
+
+                  {/* Right Group */}
+                  <foreignObject
+                    x="200"
+                    y={y - 14}
+                    width="60"
+                    height="28"
+                    style={{ opacity: hideRightB ? 0 : 1 }}
+                  >
+                    <div
+                      className="flex justify-start items-center h-full pl-1 transition-transform duration-200"
+                      style={{
+                        transform: `${isRotated ? 'rotate(180deg)' : ''} translateY(${rightShift}px)`,
+                      }}
+                    >
+                      <span
+                        className={`px-2 py-0.5 rounded-lg border text-xs font-mono font-bold transition-all ${
+                          superimposeX >= 0.85 && rightMatches
+                            ? 'border-emerald-400 bg-emerald-950/90 text-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                            : superimposeX >= 0.85
+                            ? (isomerKey === 'A'
+                                ? 'border-cyan-400 bg-cyan-950/90 text-cyan-300'
+                                : 'border-purple-400 bg-purple-950/90 text-purple-300')
+                            : getGroupBadgeColor(rightGrp)
+                        }`}
+                      >
+                        {superimposeX >= 0.85 && rightMatches
+                          ? `✓ ${rightGrp}`
+                          : superimposeX >= 0.85
+                          ? `${isomerKey}: ${rightGrp}`
+                          : rightGrp}
+                      </span>
+                    </div>
+                  </foreignObject>
+                </g>
+              );
+            })}
+
+            {/* Bottom Group */}
+            {(() => {
+              const matches = bottomMatches;
+              const isHidden = isomerKey === 'B' && matches && superimposeX >= 0.85;
+              const shiftY = matches
+                ? 0
+                : (isomerKey === 'A' ? 10 : (isRotated ? -10 : -10)) * clashProgress;
+
+              return (
+                <foreignObject
+                  x="70"
+                  y={svgHeight - topGroupY - 14}
+                  width="120"
+                  height="34"
+                  style={{ opacity: isHidden ? 0 : 1 }}
+                >
+                  <div
+                    className="flex justify-center items-center h-full transition-transform duration-200"
+                    style={{
+                      transform: `${isRotated ? 'rotate(180deg)' : ''} translateY(${shiftY}px)`,
+                    }}
+                  >
+                    <span
+                      className={`px-2.5 py-0.5 rounded-lg border text-xs font-mono font-bold transition-all ${
+                        superimposeX >= 0.85 && matches
+                          ? 'border-emerald-400 bg-emerald-950/90 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)]'
+                          : superimposeX >= 0.85
+                          ? (isomerKey === 'A'
+                              ? 'border-cyan-400 bg-cyan-950/90 text-cyan-300'
+                              : 'border-purple-400 bg-purple-950/90 text-purple-300')
+                          : getGroupBadgeColor(data.bottomGroup)
+                      }`}
+                    >
+                      {superimposeX >= 0.85 && matches
+                        ? `✓ ${data.bottomGroup}`
+                        : superimposeX >= 0.85
+                        ? `${isomerKey}: ${data.bottomGroup}`
+                        : data.bottomGroup}
+                    </span>
+                  </div>
+                </foreignObject>
+              );
+            })()}
+          </svg>
+        </div>
       </div>
     );
   };
@@ -390,14 +618,16 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
         </div>
       </div>
 
-      {/* 2D Fischer Projection Stage */}
-      <div className="relative flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-12 py-6 bg-slate-950/50 rounded-2xl border border-cyan-500/10 min-h-[380px]">
+      {/* 2D Fischer Projection Stage: CSS Grid with Shared Origin */}
+      {/* Both Molecule A and Molecule B are centered at the exact same stage center */}
+      {/* translateX = calc(± stageOffset * (1 - superimposeX)). At superimposeX = 1, offset is 0px! */}
+      <div className="relative grid grid-cols-1 grid-rows-1 place-items-center py-6 bg-slate-950/50 rounded-2xl border border-cyan-500/10 min-h-[440px] sm:min-h-[460px] overflow-hidden [--stage-offset:145px] sm:[--stage-offset:185px] md:[--stage-offset:210px]">
         {/* Molecule A */}
         <div
-          className="transition-transform duration-300"
+          className="col-start-1 row-start-1 transition-transform duration-300 ease-out flex flex-col items-center"
           style={{
-            transform: `translateX(${superimposeX * 120}px)`,
-            opacity: superimposeX > 0.8 ? 0.7 : 1,
+            transform: `translateX(calc(-1 * var(--stage-offset) * ${1 - superimposeX}))`,
+            zIndex: 10,
           }}
         >
           {renderSingleFischer(
@@ -408,23 +638,28 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
           )}
         </div>
 
-        {/* Central Vertical Mirror Plane */}
-        {superimposeX < 0.3 && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-48 w-0.5 bg-gradient-to-b from-transparent via-purple-400 to-transparent shadow-[0_0_10px_#a855f7]" />
-            <div className="px-2 py-1 rounded-md border border-purple-500/40 bg-purple-950/80 text-[10px] font-bold text-purple-300 uppercase tracking-wider">
-              Mirror Plane
-            </div>
-            <div className="h-48 w-0.5 bg-gradient-to-b from-transparent via-purple-400 to-transparent shadow-[0_0_10px_#a855f7]" />
+        {/* Central Vertical Mirror Plane (Fades away as molecules superimpose) */}
+        <div
+          className="col-start-1 row-start-1 pointer-events-none transition-all duration-300 flex flex-col items-center gap-2"
+          style={{
+            opacity: Math.max(0, 1 - superimposeX * 2.5),
+            transform: `scale(${Math.max(0.7, 1 - superimposeX * 0.3)})`,
+            zIndex: 15,
+          }}
+        >
+          <div className="h-44 sm:h-52 w-0.5 bg-gradient-to-b from-transparent via-purple-400 to-transparent shadow-[0_0_10px_#a855f7]" />
+          <div className="px-2 py-0.5 rounded-md border border-purple-500/40 bg-purple-950/80 text-[10px] font-bold text-purple-300 uppercase tracking-wider">
+            Mirror Plane
           </div>
-        )}
+          <div className="h-44 sm:h-52 w-0.5 bg-gradient-to-b from-transparent via-purple-400 to-transparent shadow-[0_0_10px_#a855f7]" />
+        </div>
 
         {/* Molecule B */}
         <div
-          className="transition-transform duration-300"
+          className="col-start-1 row-start-1 transition-transform duration-300 ease-out flex flex-col items-center"
           style={{
-            transform: `translateX(${-superimposeX * 120}px)`,
-            opacity: superimposeX > 0.8 ? 0.7 : 1,
+            transform: `translateX(calc(var(--stage-offset) * ${1 - superimposeX}))`,
+            zIndex: 20,
           }}
         >
           {renderSingleFischer(
@@ -437,24 +672,64 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
           )}
         </div>
 
-        {/* Superimposition Verdict Notification */}
-        {superimposeX > 0.85 && (
-          <div className="absolute top-4 inset-x-4 max-w-md mx-auto p-3 rounded-xl border bg-slate-900/95 backdrop-blur-xl shadow-2xl text-center z-20">
-            {isMeso || data.relationship === 'identical' ? (
+        {/* Sliding Superposition Legend Pill (Active while sliding) */}
+        {superimposeX > 0.35 && superimposeX < 0.85 && (
+          <div className="absolute top-4 inset-x-0 flex justify-center items-center pointer-events-none z-30">
+            <div className="flex items-center gap-2 px-3.5 py-1 rounded-full border border-slate-700/80 bg-slate-900/90 backdrop-blur-md shadow-xl text-[11px] font-bold">
+              <span className="text-cyan-400">Molecule A (Cyan)</span>
+              <ArrowLeftRight className="h-3 w-3 text-slate-400" />
+              <span className="text-purple-400">Molecule B (Purple)</span>
+              <span className="text-slate-400 font-normal">| Sliding together...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Superimposition Verdict Notification (Active at >= 85% overlay) */}
+        {superimposeX >= 0.85 && (
+          <div className="absolute top-4 inset-x-4 max-w-lg mx-auto p-3 sm:p-3.5 rounded-xl border bg-slate-900/95 backdrop-blur-xl shadow-2xl text-center z-30 transition-all duration-300">
+            {data.relationship === 'diastereomers' ? (
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-amber-400 font-bold text-xs flex items-center justify-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
+                  <span>Non-Superimposable Diastereomers! (Not Mirror Images)</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  C3 matches (<span className="text-emerald-300 font-mono">3R = 3R</span>), but C2 clashes (<span className="text-rose-300 font-mono">2R ≠ 2S</span>). Stereoisomers that are not mirror images are <strong className="text-amber-300">Diastereomers</strong>.
+                </p>
+              </div>
+            ) : isMeso || data.relationship === 'identical' ? (
               rotated180B ? (
-                <div className="text-emerald-400 font-bold text-xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>100% Superimposable! In-plane 180° rotation aligns all groups perfectly (Identical Meso).</span>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-emerald-400 font-bold text-xs flex items-center justify-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>100% Superimposable! (Identical Meso Homomer)</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                    After 180° in-plane rotation, every atom and stereocenter aligns 100% with Molecule A. It is <strong className="text-emerald-300">Achiral (Meso)</strong>!
+                  </p>
                 </div>
               ) : (
-                <div className="text-amber-300 font-bold text-xs">
-                  Slide B onto A, then click &quot;Rotate Mirror 180° in Plane&quot; to verify identical alignment!
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-amber-300 font-bold text-xs flex items-center justify-center gap-2">
+                    <Info className="h-4 w-4 text-amber-300 shrink-0" />
+                    <span>Molecules are overlaid! Now click &quot;Rotate Mirror 180° in Plane&quot; above to verify 100% match!</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Fischer projections allow 180° in-plane rotations without changing configuration.
+                  </p>
                 </div>
               )
             ) : (
-              <div className="text-rose-400 font-bold text-xs flex items-center justify-center gap-2">
-                <ShieldAlert className="h-4 w-4" />
-                <span>Non-Superimposable! Groups clash even after 180° rotation (Genuine Enantiomers).</span>
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-rose-400 font-bold text-xs flex items-center justify-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-rose-400 shrink-0" />
+                  <span>Non-Superimposable Mirror Images (Genuine Enantiomers)</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  {rotated180B
+                    ? "Even after 180° in-plane rotation, groups clash and fail to superimpose. These non-superimposable mirror images are Enantiomers!"
+                    : "Groups clash across chiral centers. Click \"Rotate Mirror 180° in Plane\" to verify that in-plane rotation still fails to superimpose."}
+                </p>
               </div>
             )}
           </div>
@@ -462,11 +737,11 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
       </div>
 
       {/* 2D Superposition Slider */}
-      <div className="max-w-md mx-auto w-full p-3 rounded-xl border border-slate-800 bg-slate-900/80 backdrop-blur-md">
+      <div className="max-w-md mx-auto w-full p-3 sm:p-3.5 rounded-xl border border-slate-800 bg-slate-900/80 backdrop-blur-md">
         <div className="flex justify-between text-[11px] font-bold text-slate-300 mb-1.5">
           <span>Side-by-Side</span>
           <span className="text-cyan-400 font-mono">Test 2D Superposition: {Math.round(superimposeX * 100)}%</span>
-          <span>Superimposed</span>
+          <span>100% Superimposed</span>
         </div>
         <input
           type="range"
@@ -520,4 +795,3 @@ export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({ pairIn
     </div>
   );
 };
-
