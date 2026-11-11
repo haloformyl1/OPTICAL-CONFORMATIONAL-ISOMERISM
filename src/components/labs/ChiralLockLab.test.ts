@@ -99,3 +99,4 @@ describe('ChiralLockLab - calculateCIP function', () => {
     expect(result.configuration).toBe('R');
   });
 });
+

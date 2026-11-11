@@ -1359,6 +1359,246 @@ export const ChiralLockLab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* PEDAGOGICAL MASTERCLASS: WHY ROTATION ≠ BOND BREAKING          */}
+      {/* ============================================================== */}
+      <div className="w-full mt-8 p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md space-y-8">
+        {/* Masterclass Header */}
+        <div className="border-b border-slate-800 pb-5">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <Sparkles className="h-3 w-3" />
+              <span>THEORETICAL MASTERCLASS</span>
+            </span>
+            <span className="text-[11px] font-mono text-cyan-400 font-semibold">
+              3D Spatial Geometry vs 2D Projections
+            </span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-black text-white mt-1.5">
+            <BilingualText
+              en="Why Rotating is NOT Bond Breaking, but Swapping MUST Break Bonds"
+              bn="কেন ঘূর্ণনে বন্ধন ভাঙে না, কিন্তু দুটি গ্রুপের অদলবদলে বন্ধন ভাঙা আবশ্যক?"
+            />
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
+            <BilingualText
+              en="A deep-dive explanation for students: Understanding the 3D reality behind 2D drawings using the Umbrella Tripod Model, the Hand & Glove Paradox, and Permutation Parity."
+              bn="শিক্ষার্থীদের জন্য গভীর বিশ্লেষণ: ছাতা-ট্রাইপড মডেল, হাত-দস্তানা প্যারাডক্স ও পারমিউটেশন প্যারিটি দিয়ে ২ডি চিত্রের পেছনের আসল ৩ডি বাস্তবতা অনুধাবন।"
+            />
+          </p>
+        </div>
+
+        {/* 3 Core Conceptual Pillars (Cards with Visual Demonstrations) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Pillar 1: The Umbrella / Tripod Model */}
+          <div className="flex flex-col p-5 rounded-2xl bg-slate-950/60 border border-purple-500/30 shadow-lg relative overflow-hidden group hover:border-purple-500/60 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 font-mono font-bold flex items-center justify-center text-xs border border-purple-500/40">
+                1
+              </span>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                0 Bonds Broken
+              </span>
+            </div>
+
+            <h4 className="text-sm font-bold text-white mt-3 flex items-center gap-1.5">
+              <RotateCcw className="h-4 w-4 text-purple-400" />
+              <BilingualText
+                en="The 3D Tripod / Umbrella Model"
+                bn="৩ডি ট্রাইপড / ছাতা মডেল"
+              />
+            </h4>
+
+            {/* Visual SVG Diagram of the Tripod */}
+            <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col items-center">
+              <svg width="180" height="95" viewBox="0 0 180 95" className="overflow-visible">
+                {/* Fixed Vertical Shaft */}
+                <line x1="90" y1="12" x2="90" y2="45" stroke="#06b6d4" strokeWidth="3" strokeDasharray="3 2" />
+                <circle cx="90" cy="12" r="7" fill="#06b6d4" />
+                <text x="90" y="8" fill="#a5f3fc" fontSize="8" fontWeight="bold" textAnchor="middle">Top Shaft (Fixed)</text>
+
+                {/* Central Carbon */}
+                <circle cx="90" cy="45" r="9" fill="#9333ea" />
+                <text x="90" y="48" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">C*</text>
+
+                {/* 3 Tripod Legs */}
+                <line x1="90" y1="45" x2="45" y2="82" stroke="#f43f5e" strokeWidth="2.5" />
+                <circle cx="45" cy="82" r="6" fill="#f43f5e" />
+                <text x="45" y="93" fill="#fda4af" fontSize="8" textAnchor="middle">Leg 1</text>
+
+                <line x1="90" y1="45" x2="90" y2="85" stroke="#6366f1" strokeWidth="2.5" />
+                <circle cx="90" cy="85" r="6" fill="#6366f1" />
+                <text x="90" y="94" fill="#c7d2fe" fontSize="8" textAnchor="middle">Leg 2</text>
+
+                <line x1="90" y1="45" x2="135" y2="82" stroke="#f8fafc" strokeWidth="2.5" />
+                <circle cx="135" cy="82" r="6" fill="#f8fafc" />
+                <text x="135" y="93" fill="#ffffff" fontSize="8" textAnchor="middle">Leg 3</text>
+
+                {/* Curved Rotation Arrow */}
+                <path d="M 50 86 Q 90 98 130 86" fill="none" stroke="#c084fc" strokeWidth="1.5" strokeDasharray="3 2" markerEnd="url(#arrow)" />
+              </svg>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              <BilingualText
+                en="Single covalent σ-bonds have cylindrical symmetry. Just like an umbrella or camera tripod, holding the top shaft and spinning the 3 legs by 120° breaks zero bonds. Bond angles stay 109.5°. You are merely viewing the exact same molecule from a different angle!"
+                bn="একক সমযোজী সিগমা বন্ধনের সিলিন্ড্রিক্যাল প্রতিসাম্য থাকায় মুক্ত ঘূর্ণন সম্ভব। ছাতার ডাঁট ধরে নিচের ৩টি শিকড় ১২০° ঘোরালে কোনো বন্ধন ভাঙে না। বন্ধন কোণ ১০৯.৫° অপরিবর্তিত থাকে। এটি কেবল ভিন্ন কোণ থেকে একই অণুকে দেখা!"
+              />
+            </p>
+          </div>
+
+          {/* Pillar 2: The Hand & Glove Paradox */}
+          <div className="flex flex-col p-5 rounded-2xl bg-slate-950/60 border border-rose-500/30 shadow-lg relative overflow-hidden group hover:border-rose-500/60 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-300 font-mono font-bold flex items-center justify-center text-xs border border-rose-500/40">
+                2
+              </span>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                2 Bonds Broken
+              </span>
+            </div>
+
+            <h4 className="text-sm font-bold text-white mt-3 flex items-center gap-1.5">
+              <Scissors className="h-4 w-4 text-rose-400" />
+              <BilingualText
+                en="The Hand & Glove Paradox"
+                bn="হাত ও দস্তানা প্যারাডক্স (অদলবদল)"
+              />
+            </h4>
+
+            {/* Visual SVG Diagram of Left Hand vs Right Hand */}
+            <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-around">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl select-none">🤚</span>
+                <span className="text-[10px] font-mono text-cyan-300 font-bold mt-1">Left Hand</span>
+                <span className="text-[9px] text-slate-400 font-mono">Thumb on Right</span>
+              </div>
+
+              <div className="flex flex-col items-center px-1">
+                <span className="text-xs font-mono font-black text-rose-400">CANNOT</span>
+                <span className="text-[9px] font-mono text-slate-500">ROTATE INTO</span>
+                <span className="text-xs text-rose-400 font-black">⇄</span>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <span className="text-2xl select-none">✋</span>
+                <span className="text-[10px] font-mono text-rose-300 font-bold mt-1">Right Hand</span>
+                <span className="text-[9px] text-slate-400 font-mono">Thumb on Left</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              <BilingualText
+                en="Hold your left hand in front of you (palm facing you). Can you spin or twist your left hand to put your thumb on the left side while keeping your palm forward and fingers up? Physically impossible! The ONLY way to swap them is cutting the thumb and pinky off and switching them. That is why 1 swap breaks bonds and inverts (R) to (S)!"
+                bn="আপনার বাঁ হাত সামনে রাখুন (তালু আপনার দিকে)। হাত না উল্টে কি বুড়ো আঙুলকে বাঁয়ে আর কনিষ্ঠাকে ডানে আনা সম্ভব? অসম্ভব! একমাত্র উপায় আঙুল কেটে অদলবদল করা। এ কারণেই ১টি অদলবদল মানেই বন্ধন ভাঙা এবং (R) থেকে (S) রূপান্তর!"
+              />
+            </p>
+          </div>
+
+          {/* Pillar 3: 3D Tetrahedron vs 2D Fischer */}
+          <div className="flex flex-col p-5 rounded-2xl bg-slate-950/60 border border-cyan-500/30 shadow-lg relative overflow-hidden group hover:border-cyan-500/60 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono font-bold flex items-center justify-center text-xs border border-cyan-500/40">
+                3
+              </span>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                Fischer 2D Rules
+              </span>
+            </div>
+
+            <h4 className="text-sm font-bold text-white mt-3 flex items-center gap-1.5">
+              <Layers className="h-4 w-4 text-cyan-400" />
+              <BilingualText
+                en="The Fischer 'Hugging' Geometry"
+                bn="ফিশার 'আলিঙ্গন' জ্যামিতি"
+              />
+            </h4>
+
+            {/* Visual Diagram of Wedges and Dashes */}
+            <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col items-center">
+              <div className="text-[11px] font-mono text-slate-300 text-center space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-amber-300 font-bold">Vertical (Top/Bottom):</span>
+                  <span className="text-slate-400 text-[10px]">Dashes (Away from you)</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-cyan-300 font-bold">Horizontal (Left/Right):</span>
+                  <span className="text-slate-400 text-[10px]">Wedges (Hugging toward you)</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              <BilingualText
+                en="A Fischer cross is not flat. Horizontal arms reach forward like a hug, while vertical bonds curve backward. A 180° in-plane flip keeps vertical as vertical and horizontal as horizontal (allowed!). A 90° turn swaps wedges with dashes (strictly forbidden in static projections)."
+                bn="ফিশার ক্রস সমতল নয়। অনুভূমিক বাহু দুটি আলিঙ্গনের মতো সামনে এগিয়ে আসে, আর উল্লম্ব বন্ধন পিছনে চলে যায়। ১৮০° ঘোরালে উল্লম্ব উল্লম্বই থাকে (অনুমোদিত!)। কিন্তু ৯০° ঘোরালে ড্যাশ ও ওয়েজ উল্টে যায় (কঠোরভাবে নিষিদ্ধ)।"
+              />
+            </p>
+          </div>
+        </div>
+
+        {/* Master Comparison Matrix Table */}
+        <div className="mt-4 p-5 rounded-2xl bg-slate-950/80 border border-slate-800 overflow-x-auto">
+          <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <Info className="h-4 w-4 text-amber-400" />
+            <BilingualText
+              en="Comprehensive Stereochemical Operation Matrix"
+              bn="স্টেরিওরাসায়নিক ক্রিয়াকলাপের পূর্ণাঙ্গ তুলনামূলক সারণী"
+            />
+          </h4>
+
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 font-mono uppercase text-[10px]">
+                <th className="py-2.5 px-3">Operation / Action</th>
+                <th className="py-2.5 px-3">Bonds Broken</th>
+                <th className="py-2.5 px-3">Physical Meaning</th>
+                <th className="py-2.5 px-3">Mathematical Parity</th>
+                <th className="py-2.5 px-3">CIP (R)/(S) Status</th>
+                <th className="py-2.5 px-3">Isomer Formed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 text-slate-200">
+              <tr className="hover:bg-slate-900/50 transition-colors">
+                <td className="py-3 px-3 font-bold text-purple-300 flex items-center gap-1.5">
+                  <RotateCcw className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                  <span>Rotate Single Bonds (Propeller)</span>
+                </td>
+                <td className="py-3 px-3 font-mono font-bold text-emerald-400">0 Bonds</td>
+                <td className="py-3 px-3">Free 3D rotation of 3-leg tripod around fixed top spindle</td>
+                <td className="py-3 px-3 font-mono text-cyan-300">Even (Cyclic 3-cycle)</td>
+                <td className="py-3 px-3 font-mono font-bold text-emerald-400">Unchanged (R → R)</td>
+                <td className="py-3 px-3 font-bold text-emerald-300">Identical Homomer</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/50 transition-colors">
+                <td className="py-3 px-3 font-bold text-rose-300 flex items-center gap-1.5">
+                  <Scissors className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                  <span>Swap Horizontal Groups (Chemical Saw)</span>
+                </td>
+                <td className="py-3 px-3 font-mono font-bold text-rose-400">2 Bonds Broken</td>
+                <td className="py-3 px-3">Physically detaching left & right groups, crossing over, and re-bonding</td>
+                <td className="py-3 px-3 font-mono text-rose-300">Odd (1 Transposition)</td>
+                <td className="py-3 px-3 font-mono font-bold text-rose-400">Inverted (R ⇄ S)</td>
+                <td className="py-3 px-3 font-bold text-rose-300">Enantiomer (Mirror Image)</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/50 transition-colors">
+                <td className="py-3 px-3 font-bold text-cyan-300 flex items-center gap-1.5">
+                  <RotateCw className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                  <span>Rotate Molecule 180° In Plane</span>
+                </td>
+                <td className="py-3 px-3 font-mono font-bold text-emerald-400">0 Bonds</td>
+                <td className="py-3 px-3">Spinning whole cross in paper plane; equals 2 simultaneous swaps</td>
+                <td className="py-3 px-3 font-mono text-cyan-300">Even ((-1) × (-1) = +1)</td>
+                <td className="py-3 px-3 font-mono font-bold text-emerald-400">Unchanged (R → R)</td>
+                <td className="py-3 px-3 font-bold text-cyan-300">Identical Homomer</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
