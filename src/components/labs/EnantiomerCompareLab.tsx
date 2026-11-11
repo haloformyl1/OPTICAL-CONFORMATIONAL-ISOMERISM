@@ -198,6 +198,7 @@ export const EnantiomerCompareLab: React.FC = () => {
   const [selectedPairIndex, setSelectedPairIndex] = useState(1); // Default to Tartaric Acid
   const [superimposeProgress, setSuperimposeProgress] = useState<number>(0); // 0 = separate, 1 = overlaid
   const [isAutoSuperimposing, setIsAutoSuperimposing] = useState<boolean>(false);
+  const [isRotated180, setIsRotated180] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'3d' | '2d-fischer' | 'split'>('3d');
   // By default, do not clutter 3D spheres with floating text labels; use the Top Group Legend!
   const [showLabels, setShowLabels] = useState<boolean>(false);
@@ -285,6 +286,7 @@ export const EnantiomerCompareLab: React.FC = () => {
             onChange={(e) => {
               setSelectedPairIndex(Number(e.target.value));
               setSuperimposeProgress(0);
+              setIsRotated180(false);
             }}
             className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer max-w-sm sm:max-w-md truncate"
           >
@@ -369,6 +371,21 @@ export const EnantiomerCompareLab: React.FC = () => {
             </div>
           )}
 
+          {/* 180° In-Plane Rotation Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsRotated180(!isRotated180)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              isRotated180
+                ? 'border-purple-400 bg-purple-500/25 text-purple-200 shadow-[0_0_12px_rgba(192,132,252,0.3)]'
+                : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:border-slate-600'
+            }`}
+            title="Rotate Molecule B by 180° in plane to test symmetry & superimposability"
+          >
+            <RotateCw className={`h-3.5 w-3.5 transition-transform duration-500 ${isRotated180 ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
+            <span>{isRotated180 ? 'B: 180° Rotated' : 'Rotate B 180°'}</span>
+          </button>
+
           {/* 3D Superposition Quick Buttons */}
           {(viewMode === '3d' || viewMode === 'split') && (
             <div className="flex items-center gap-1.5 border-l border-slate-700 pl-2">
@@ -448,6 +465,8 @@ export const EnantiomerCompareLab: React.FC = () => {
                 pairIndex={selectedPairIndex}
                 externalProgress={superimposeProgress}
                 onProgressChange={setSuperimposeProgress}
+                externalIsRotated={isRotated180}
+                onRotateChange={setIsRotated180}
               />
             </div>
           )}
@@ -463,6 +482,7 @@ export const EnantiomerCompareLab: React.FC = () => {
                   superimposeProgress={superimposeProgress}
                   showLabels={showLabels}
                   showPriorityBadges={showPriorityBadges}
+                  isRotated180={isRotated180}
                 />
               </MolecularCanvas>
 
@@ -493,6 +513,8 @@ export const EnantiomerCompareLab: React.FC = () => {
                   pairIndex={selectedPairIndex}
                   externalProgress={superimposeProgress}
                   onProgressChange={setSuperimposeProgress}
+                  externalIsRotated={isRotated180}
+                  onRotateChange={setIsRotated180}
                 />
               </div>
               <div className="relative rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden min-h-[350px]">
@@ -505,6 +527,7 @@ export const EnantiomerCompareLab: React.FC = () => {
                     superimposeProgress={superimposeProgress}
                     showLabels={showLabels}
                     showPriorityBadges={showPriorityBadges}
+                    isRotated180={isRotated180}
                   />
                 </MolecularCanvas>
               </div>

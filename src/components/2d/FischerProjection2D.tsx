@@ -364,16 +364,27 @@ interface FischerProjection2DProps {
   pairIndex?: number;
   externalProgress?: number;
   onProgressChange?: (p: number) => void;
+  externalIsRotated?: boolean;
+  onRotateChange?: (r: boolean) => void;
 }
 
 export const FischerProjection2D: React.FC<FischerProjection2DProps> = ({
   pairIndex = 1,
   externalProgress,
   onProgressChange,
+  externalIsRotated,
+  onRotateChange,
 }) => {
   const [showWedgeDash, setShowWedgeDash] = useState(false);
-  const [rotated180B, setRotated180B] = useState(false);
+  const [internalRotated180B, setInternalRotated180B] = useState(false);
   const [internalSuperimposeX, setInternalSuperimposeX] = useState(0);
+
+  const rotated180B = externalIsRotated !== undefined ? externalIsRotated : internalRotated180B;
+  const setRotated180B = (val: boolean | ((prev: boolean) => boolean)) => {
+    const nextVal = typeof val === 'function' ? val(rotated180B) : val;
+    setInternalRotated180B(nextVal);
+    onRotateChange?.(nextVal);
+  };
 
   const superimposeX = externalProgress !== undefined ? externalProgress : internalSuperimposeX;
   const setSuperimposeX = onProgressChange || setInternalSuperimposeX;

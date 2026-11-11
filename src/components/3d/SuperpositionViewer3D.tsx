@@ -12,6 +12,7 @@ interface SuperpositionViewer3DProps {
   superimposeProgress?: number; // 0 (separated) to 1 (fully overlaid)
   showLabels?: boolean;
   showPriorityBadges?: boolean;
+  isRotated180?: boolean;
 }
 
 export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
@@ -22,6 +23,7 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
   superimposeProgress = mode === 'superimposed' ? 1 : 0,
   showLabels = true,
   showPriorityBadges = false,
+  isRotated180 = false,
 }) => {
   // Interpolate position from side-by-side to origin
   const posX_B = THREE.MathUtils.lerp(2.2, 0, superimposeProgress);
@@ -29,6 +31,22 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
 
   const isSuperimposed = superimposeProgress > 0.85;
   const isMatch = relationship === 'identical' || relationship === 'meso';
+
+  // For identical/meso compounds, Molecule B rotates 180° around the Z-axis (in-plane rotation)
+  // to align with Molecule A. If manually toggled via isRotated180, it rotates immediately.
+  // Otherwise, during superposition it smoothly rotates from 0 to 180° as it translates into A!
+  // For enantiomers/diastereomers, it only rotates if manually toggled by user to test 180° rotation.
+  const rotZ_B = isRotated180
+    ? Math.PI
+    : isMatch
+    ? THREE.MathUtils.lerp(0, Math.PI, superimposeProgress)
+    : 0;
+
+  // When identical molecules superimpose 100%, Molecule B seamlessly dissolves into Molecule A (progress >= 0.95)
+  // to avoid WebGL z-fighting, leaving 1 unified crystal-clear molecule!
+  const opacityB = isMatch && superimposeProgress >= 0.95
+    ? Math.max(0, 1 - (superimposeProgress - 0.95) / 0.05)
+    : 1;
 
   return (
     <group>
@@ -84,11 +102,12 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
       )}
 
       {/* Molecule B */}
-      <group position={[posX_B, 0, 0]}>
+      <group position={[posX_B, 0, 0]} rotation={[0, 0, rotZ_B]}>
         <Molecule3DViewer
           structure={structureB}
           showLabels={showLabels}
           showPriorityBadges={showPriorityBadges}
+          opacity={opacityB}
         />
         {!isSuperimposed && (
           <Billboard position={[0, 2.9, 0]} follow={true}>
@@ -99,7 +118,11 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
               outlineColor="#020617"
               fontWeight="bold"
             >
-              {relationship === 'enantiomers' ? 'Mirror Image (Isomer B)' : 'Isomer B'}
+              {isRotated180
+                ? 'Mirror Image (180° Rotated)'
+                : relationship === 'enantiomers'
+                ? 'Mirror Image (Isomer B)'
+                : 'Isomer B'}
             </Text>
           </Billboard>
         )}
@@ -107,9 +130,9 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
 
       {/* Superimposition Verdict Notification Overlay */}
       {isSuperimposed && (
-        <Billboard position={[0, 3.1, 0]} follow={true}>
+        <Billboard position={[0, 3.2, 0]} follow={true}>
           <Text
-            fontSize={0.3}
+            fontSize={0.28}
             color={isMatch ? '#4ade80' : '#f87171'}
             anchorX="center"
             anchorY="middle"
@@ -118,8 +141,22 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
             fontWeight="bold"
           >
             {isMatch
-              ? '✓ Superimposable! (Identical / Homomers)'
+              ? '✓ 100% Superimposable! Overlapped into 1 Single Molecule'
               : '✕ Non-Superimposable Mismatch! (Enantiomers / Chiral)'}
+          </Text>
+          <Text
+            position={[0, -0.32, 0]}
+            fontSize={0.16}
+            color={isMatch ? '#86efac' : '#fca5a5'}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.03}
+            outlineColor="#020617"
+            fontWeight="bold"
+          >
+            {isMatch
+              ? '180° in-plane rotation aligns all atoms identically → Achiral Meso / Homomers'
+              : 'Even after 3D rotation, bonds cannot align identically in space'}
           </Text>
           {/* Clash Point Aura if non-superimposable */}
           {!isMatch && (

@@ -33,6 +33,7 @@ interface Molecule3DViewerProps {
   spaceFilling?: boolean;
   showDipole?: boolean;
   highlightConformation?: boolean;
+  opacity?: number;
 }
 
 const getBondTransform = (
@@ -64,7 +65,9 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
   spaceFilling = false,
   showDipole = false,
   highlightConformation = false,
+  opacity = 1,
 }) => {
+  if (opacity <= 0.001) return null;
   const atomMap = useMemo(() => {
     const map = new Map<string, Atom3D>();
     structure.atoms.forEach((a) => map.set(a.id, a));
@@ -131,6 +134,8 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
                 color={color}
                 roughness={0.25}
                 metalness={0.15}
+                transparent={opacity < 1}
+                opacity={opacity}
               />
             </Sphere>
 
@@ -225,6 +230,8 @@ export const Molecule3DViewer: React.FC<Molecule3DViewerProps> = ({
                   color={bondColor}
                   roughness={0.4}
                   metalness={0.1}
+                  transparent={opacity < 1}
+                  opacity={opacity}
                 />
               </Cylinder>
             </group>
