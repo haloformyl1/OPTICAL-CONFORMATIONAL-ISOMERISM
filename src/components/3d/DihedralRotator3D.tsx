@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Sphere, Cylinder, Text, Ring } from '@react-three/drei';
+import { Sphere, Cylinder, Text, Ring, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { rotatePointAroundAxis } from '../../utils/chemistry';
 
@@ -110,9 +110,11 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
           <meshStandardMaterial color="#334155" roughness={0.3} />
         </Sphere>
         {viewMode !== 'newman' && (
-          <Text position={[0, 0.5, 0]} fontSize={0.2} color="#94a3b8">
-            C1 (Front)
-          </Text>
+          <Billboard position={[0, 0.55, 0]} follow={true}>
+            <Text fontSize={0.18} color="#94a3b8" outlineWidth={0.02} outlineColor="#020617">
+              C1 (Front)
+            </Text>
+          </Billboard>
         )}
       </group>
 
@@ -122,9 +124,11 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
           <meshStandardMaterial color="#1e293b" roughness={0.3} />
         </Sphere>
         {viewMode !== 'newman' && (
-          <Text position={[0, -0.55, 0]} fontSize={0.2} color="#64748b">
-            C2 (Back)
-          </Text>
+          <Billboard position={[0, -0.6, 0]} follow={true}>
+            <Text fontSize={0.18} color="#64748b" outlineWidth={0.02} outlineColor="#020617">
+              C2 (Back)
+            </Text>
+          </Billboard>
         )}
       </group>
 
@@ -146,9 +150,11 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
               <Sphere args={[sub.label === 'CH3' || sub.label === 'OH' ? 0.36 : 0.26, 24, 24]}>
                 <meshStandardMaterial color={sub.color} roughness={0.2} />
               </Sphere>
-              <Text position={[0, 0.38, 0]} fontSize={0.22} color="#f8fafc" outlineWidth={0.03} outlineColor="#020617">
-                {sub.label}
-              </Text>
+              <Billboard position={[0, 0.42, 0]} follow={true}>
+                <Text fontSize={0.22} color="#f8fafc" outlineWidth={0.03} outlineColor="#020617">
+                  {sub.label}
+                </Text>
+              </Billboard>
             </group>
           </group>
         );
@@ -172,9 +178,11 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
               <Sphere args={[sub.label === 'CH3' || sub.label === 'OH' ? 0.36 : 0.24, 24, 24]}>
                 <meshStandardMaterial color={sub.color} roughness={0.3} />
               </Sphere>
-              <Text position={[0, -0.38, 0]} fontSize={0.22} color="#cbd5e1" outlineWidth={0.03} outlineColor="#020617">
-                {sub.label}
-              </Text>
+              <Billboard position={[0, -0.42, 0]} follow={true}>
+                <Text fontSize={0.22} color="#cbd5e1" outlineWidth={0.03} outlineColor="#020617">
+                  {sub.label}
+                </Text>
+              </Billboard>
             </group>
           </group>
         );

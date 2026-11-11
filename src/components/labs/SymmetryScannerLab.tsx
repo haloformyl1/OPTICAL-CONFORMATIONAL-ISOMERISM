@@ -5,13 +5,14 @@ import { SymmetryBlueprint2D } from '../2d/SymmetryBlueprint2D';
 import { BilingualText } from '../BilingualText';
 import { OPTICAL_EXAMPLES } from '../../content/examples/opticalExamples';
 import { CONFORMATIONAL_EXAMPLES } from '../../content/examples/conformationalExamples';
-import { ShieldCheck, ShieldAlert, Layers, Eye, EyeOff, Info, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Layers, Eye, EyeOff, Info, CheckCircle2, Type } from 'lucide-react';
 
 export const SymmetryScannerLab: React.FC = () => {
   const [selectedExampleIndex, setSelectedExampleIndex] = useState(0); // meso-tartaric acid by default
   const [showPOS, setShowPOS] = useState(true);
   const [posPlane, setPosPlane] = useState<'xy' | 'yz' | 'xz'>('xz');
   const [showCOS, setShowCOS] = useState(false);
+  const [showAnnotations, setShowAnnotations] = useState(true);
   const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('split');
 
   // Available curated test molecules
@@ -108,18 +109,34 @@ export const SymmetryScannerLab: React.FC = () => {
 
             {showPOS && viewMode !== '2d' && (
               <div className="flex rounded-lg border border-cyan-500/30 bg-slate-900 p-0.5 text-[11px] font-bold">
-                {(['xy', 'yz', 'xz'] as const).map((plane) => (
-                  <button
-                    key={plane}
-                    type="button"
-                    onClick={() => setPosPlane(plane)}
-                    className={`rounded px-2 py-0.5 uppercase cursor-pointer border-0 ${
-                      posPlane === plane ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
-                    }`}
-                  >
-                    {plane}
-                  </button>
-                ))}
+                {(['xy', 'yz', 'xz'] as const).map((plane) => {
+                  const isCurrentValid = currentTest.hasPos && currentTest.plane === plane;
+                  const isSelected = posPlane === plane;
+                  return (
+                    <button
+                      key={plane}
+                      type="button"
+                      onClick={() => setPosPlane(plane)}
+                      className={`flex items-center gap-1 rounded px-2.5 py-1 uppercase cursor-pointer border-0 transition-all ${
+                        isSelected
+                          ? isCurrentValid
+                            ? 'bg-emerald-500 text-slate-950 font-black shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                            : 'bg-rose-500 text-white font-black'
+                          : isCurrentValid
+                          ? 'text-emerald-400 hover:text-emerald-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title={
+                        isCurrentValid
+                          ? `Valid Plane of Symmetry for ${currentTest.label}`
+                          : `Not a symmetry plane for ${currentTest.label}`
+                      }
+                    >
+                      {plane}
+                      {isCurrentValid && <span className="text-[10px]">✓</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -134,6 +151,21 @@ export const SymmetryScannerLab: React.FC = () => {
             >
               {showCOS ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">Center (i)</span>
+            </button>
+
+            {/* Toggle 3D Text Annotations */}
+            <button
+              type="button"
+              onClick={() => setShowAnnotations(!showAnnotations)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                showAnnotations
+                  ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                  : 'border-slate-700 bg-slate-800 text-slate-400'
+              }`}
+              title="Toggle 3D text descriptions like 'Genuine Horizontal Plane of Symmetry'"
+            >
+              <Type className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">3D Text: {showAnnotations ? 'ON' : 'OFF'}</span>
             </button>
           </div>
         </div>
@@ -152,8 +184,33 @@ export const SymmetryScannerLab: React.FC = () => {
                   showPOS={showPOS}
                   posPlane={posPlane}
                   showCOS={showCOS}
+                  expectedPlane={currentTest.hasPos ? currentTest.plane : null}
+                  hasPOS={currentTest.hasPos}
+                  showPlaneAnnotations={showAnnotations}
                 />
               </MolecularCanvas>
+
+              {/* On-screen Quick Toggle for 3D Text Annotations */}
+              <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnotations(!showAnnotations)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/90 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white backdrop-blur-md shadow-md cursor-pointer transition-all hover:border-cyan-500/40"
+                  title="Toggle 3D text annotations on/off"
+                >
+                  {showAnnotations ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5 text-rose-400" />
+                      <span>Hide 3D Text</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>Show 3D Text</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               {/* Verdict HUD Card */}
               <div className="absolute top-4 left-4 z-10">

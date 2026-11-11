@@ -9,6 +9,9 @@ interface SymmetryScanner3DProps {
   showPOS: boolean;
   posPlane: 'xy' | 'yz' | 'xz';
   showCOS: boolean;
+  expectedPlane?: 'xy' | 'yz' | 'xz' | null;
+  hasPOS?: boolean;
+  showPlaneAnnotations?: boolean;
 }
 
 export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
@@ -16,6 +19,9 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
   showPOS,
   posPlane,
   showCOS,
+  expectedPlane,
+  hasPOS = false,
+  showPlaneAnnotations = true,
 }) => {
   // Plane orientations
   const planeRotation: [number, number, number] =
@@ -28,7 +34,7 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
   // Find reflection pairs across the plane of symmetry
   const reflectionPairs = useMemo(() => {
     if (!showPOS) return [];
-    const pairs: Array<{ p1: [number, number, number]; p2: [number, number, number]; element: string }> = [];
+    const pairs: Array<{ p1: [number, number, number]; p2: [number, number, number]; element: string; label?: string }> = [];
     const used = new Set<string>();
 
     structure.atoms.forEach((a1) => {
@@ -51,7 +57,7 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
         }
 
         if (isReflected) {
-          pairs.push({ p1: a1.position, p2: a2.position, element: a1.element });
+          pairs.push({ p1: a1.position, p2: a2.position, element: a1.element, label: a1.label });
           used.add(a1.id);
           used.add(a2.id);
         }
@@ -59,6 +65,9 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
     });
     return pairs;
   }, [structure, showPOS, posPlane]);
+
+  // Determine if this plane is a genuine plane of symmetry
+  const isGenuinePOS = (hasPOS && posPlane === expectedPlane) || reflectionPairs.length >= 2;
 
   return (
     <group>
@@ -72,9 +81,9 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
           <group rotation={planeRotation}>
             <Plane args={[4.6, 4.6]}>
               <meshStandardMaterial
-                color="#06b6d4"
+                color={isGenuinePOS ? '#10b981' : '#f43f5e'}
                 transparent
-                opacity={0.32}
+                opacity={isGenuinePOS ? 0.32 : 0.22}
                 side={THREE.DoubleSide}
                 roughness={0.1}
               />
@@ -82,50 +91,93 @@ export const SymmetryScanner3D: React.FC<SymmetryScanner3DProps> = ({
             {/* Wireframe border */}
             <lineSegments>
               <edgesGeometry args={[new THREE.PlaneGeometry(4.6, 4.6)]} />
-              <lineBasicMaterial color="#38bdf8" linewidth={2} />
+              <lineBasicMaterial color={isGenuinePOS ? '#34d399' : '#ef4444'} linewidth={2} />
             </lineSegments>
           </group>
 
-          {/* Plane Label */}
-          <Billboard position={posPlane === 'xz' ? [0, 0.2, 2.4] : [0, 2.5, 0]} follow={true}>
-            <Text
-              fontSize={0.24}
-              color="#67e8f9"
-              outlineWidth={0.035}
-              outlineColor="#020617"
-              fontWeight="bold"
-            >
-              {posPlane === 'xz'
-                ? 'Horizontal Plane of Symmetry (σ) [Bisects C2-C3]'
-                : posPlane === 'xy'
-                ? 'Vertical Plane of Symmetry (σ): z = 0'
-                : 'Vertical Plane of Symmetry (σ): x = 0'}
-            </Text>
-          </Billboard>
+          {/* Educational Billboard Label in 3D (Toggleable) */}
+          {showPlaneAnnotations && (
+            <Billboard position={[0, 2.7, 0]} follow={true}>
+              {isGenuinePOS ? (
+                <group>
+                  <Text
+                    fontSize={0.25}
+                    color="#34d399"
+                    outlineWidth={0.04}
+                    outlineColor="#020617"
+                    fontWeight="bold"
+                    anchorY="bottom"
+                  >
+                    {posPlane === 'xz'
+                      ? '✓ Genuine Horizontal Plane of Symmetry (σ): y = 0'
+                      : '✓ Genuine Plane of Symmetry (σ)'}
+                  </Text>
+                  <Text
+                    fontSize={0.15}
+                    color="#a7f3d0"
+                    outlineWidth={0.025}
+                    outlineColor="#020617"
+                    position={[0, -0.22, 0]}
+                    anchorY="top"
+                  >
+                    {posPlane === 'xz'
+                      ? 'Bisects C2-C3: Top (-COOH, -OH, -H) mirrors Bottom (-COOH, -OH, -H)'
+                      : 'All atoms reflect into identical counterparts'}
+                  </Text>
+                </group>
+              ) : (
+                <group>
+                  <Text
+                    fontSize={0.24}
+                    color="#f87171"
+                    outlineWidth={0.04}
+                    outlineColor="#020617"
+                    fontWeight="bold"
+                    anchorY="bottom"
+                  >
+                    ✕ NOT a Plane of Symmetry!
+                  </Text>
+                  <Text
+                    fontSize={0.14}
+                    color="#fca5a5"
+                    outlineWidth={0.025}
+                    outlineColor="#020617"
+                    position={[0, -0.22, 0]}
+                    anchorY="top"
+                  >
+                    {posPlane === 'xy'
+                      ? 'Left (-H) ≠ Right (-OH). Slices between H and OH! Click [XZ] for true plane.'
+                      : 'Mismatched groups across this plane. Click [XZ] for true horizontal plane.'}
+                  </Text>
+                </group>
+              )}
+            </Billboard>
+          )}
 
           {/* Reflection Rays Connecting Symmetric Atom Pairs across the Plane */}
-          {reflectionPairs.map((pair, idx) => {
-            const v1 = new THREE.Vector3(...pair.p1);
-            const v2 = new THREE.Vector3(...pair.p2);
-            const mid = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
-            const dir = new THREE.Vector3().subVectors(v2, v1);
-            const length = dir.length();
-            const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+          {isGenuinePOS &&
+            reflectionPairs.map((pair, idx) => {
+              const v1 = new THREE.Vector3(...pair.p1);
+              const v2 = new THREE.Vector3(...pair.p2);
+              const mid = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
+              const dir = new THREE.Vector3().subVectors(v2, v1);
+              const length = dir.length();
+              const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
 
-            return (
-              <group key={`ref-pair-${idx}`}>
-                <group position={mid} quaternion={quat}>
-                  <Cylinder args={[0.015, 0.015, length, 8]}>
-                    <meshBasicMaterial color="#38bdf8" transparent opacity={0.65} />
-                  </Cylinder>
+              return (
+                <group key={`ref-pair-${idx}`}>
+                  <group position={mid} quaternion={quat}>
+                    <Cylinder args={[0.018, 0.018, length, 8]}>
+                      <meshBasicMaterial color="#34d399" transparent opacity={0.75} />
+                    </Cylinder>
+                  </group>
+                  {/* Intersection reflection point on the plane */}
+                  <Sphere args={[0.065, 12, 12]} position={mid}>
+                    <meshBasicMaterial color="#6ee7b7" />
+                  </Sphere>
                 </group>
-                {/* Intersection reflection point on the plane */}
-                <Sphere args={[0.06, 12, 12]} position={mid}>
-                  <meshBasicMaterial color="#67e8f9" />
-                </Sphere>
-              </group>
-            );
-          })}
+              );
+            })}
         </group>
       )}
 
