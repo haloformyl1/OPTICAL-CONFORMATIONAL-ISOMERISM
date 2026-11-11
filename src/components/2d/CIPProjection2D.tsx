@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BilingualText } from '../BilingualText';
 import { Sparkles, ArrowRight, ShieldCheck, CheckCircle2, RotateCw, RotateCcw, AlertTriangle, HelpCircle } from 'lucide-react';
 
@@ -46,8 +46,8 @@ const PRESET_MOLECULES: CIPMoleculeOption[] = [
     nameBn: '(R)-২-ক্লোরোবিউটেন',
     top: { formula: 'CH2CH3', priority: 2, atomZ: 'C (attached to C, H, H)' },
     bottom: { formula: 'H', priority: 4, atomZ: 'H (Z=1, Lowest Priority)' },
-    left: { formula: 'CH3', priority: 3, atomZ: 'C (attached to H, H, H)' },
-    right: { formula: 'Cl', priority: 1, atomZ: 'Cl (Z=17, Highest Priority)' },
+    left: { formula: 'Cl', priority: 1, atomZ: 'Cl (Z=17, Highest Priority)' },
+    right: { formula: 'CH3', priority: 3, atomZ: 'C (attached to H, H, H)' },
     chiralCarbonLabel: 'C2*',
     explanationEn: 'Group 4 (H) is on a VERTICAL bottom rung. Path 1(Cl) -> 2(Et) -> 3(Me) is clockwise. Because 4 is on vertical, no reversal needed: Configuration is (R)!',
     explanationBn: 'গ্রুপ ৪ (H) উলম্ব বন্ধনে (নিচে) রয়েছে। ১(Cl) -> ২(Et) -> ৩(Me) ঘূর্ণন ঘড়ির কাঁটার দিকে। ৪ উলম্ব থাকায় উত্তর অপরিবর্তিত থাকবে: (R)!',
@@ -91,6 +91,16 @@ export const CIPProjection2D: React.FC<CIPProjection2DProps> = ({
   const [showAtomNumbers, setShowAtomNumbers] = useState(true);
   const [activeStep, setActiveStep] = useState<number>(step);
 
+  useEffect(() => {
+    setActiveStep(step);
+  }, [step]);
+
+  useEffect(() => {
+    if (initialMoleculeId) {
+      setSelectedId(initialMoleculeId);
+    }
+  }, [initialMoleculeId]);
+
   const mol = PRESET_MOLECULES.find((m) => m.id === selectedId) || PRESET_MOLECULES[0];
 
   // Coordinates on 320x320 SVG canvas
@@ -117,16 +127,6 @@ export const CIPProjection2D: React.FC<CIPProjection2DProps> = ({
   const p4Placement = p4Entry[0] === 'top' || p4Entry[0] === 'bottom' ? 'vertical' : 'horizontal';
 
   // Calculate apparent 2D angular direction of 1 -> 2 -> 3
-  const angle1 = Math.atan2(p1Pos.y - cy, p1Pos.x - cx);
-  const angle2 = Math.atan2(p2Pos.y - cy, p2Pos.x - cx);
-  const angle3 = Math.atan2(p3Pos.y - cy, p3Pos.x - cx);
-
-  // Normalize angles to 0..2PI
-  const norm = (a: number) => (a < 0 ? a + 2 * Math.PI : a);
-  const a1 = norm(angle1);
-  const a2 = norm(angle2);
-  const a3 = norm(angle3);
-
   // Signed cross product to check if 1 -> 2 -> 3 is clockwise in SVG coords (y down)
   const cross = (p2Pos.x - p1Pos.x) * (p3Pos.y - p2Pos.y) - (p2Pos.y - p1Pos.y) * (p3Pos.x - p2Pos.x);
   const isClockwiseApparent = cross > 0;
@@ -136,14 +136,43 @@ export const CIPProjection2D: React.FC<CIPProjection2DProps> = ({
     ? (isClockwiseApparent ? 'R' : 'S')
     : (isClockwiseApparent ? 'S' : 'R');
 
-  // Arc path for the arrow
-  const arcRadius = 75;
-  const startX = cx + arcRadius * Math.cos(angle1);
-  const startY = cy + arcRadius * Math.sin(angle1);
-  const midX = cx + arcRadius * Math.cos(angle2);
-  const midY = cy + arcRadius * Math.sin(angle2);
-  const endX = cx + arcRadius * Math.cos(angle3);
-  const endY = cy + arcRadius * Math.sin(angle3);
+  // Circular arc path tracing smoothly 1 -> 2 -> 3 around the chiral carbon
+  const arcRadius = 62;
+  let a1 = Math.atan2(p1Pos.y - cy, p1Pos.x - cx);
+  let a2 = Math.atan2(p2Pos.y - cy, p2Pos.x - cx);
+  let a3 = Math.atan2(p3Pos.y - cy, p3Pos.x - cx);
+
+  // Unwrap angles continuously from 1 -> 2 -> 3 along the rotation direction
+  if (isClockwiseApparent) {
+    while (a2 <= a1) a2 += 2 * Math.PI;
+    while (a3 <= a2) a3 += 2 * Math.PI;
+  } else {
+    while (a2 >= a1) a2 -= 2 * Math.PI;
+    while (a3 >= a2) a3 -= 2 * Math.PI;
+  }
+
+  // Sample 48 points along the circular arc for mathematical smoothness
+  const arcSteps = 48;
+  const arcPoints: { x: number; y: number }[] = [];
+  for (let i = 0; i <= arcSteps; i++) {
+    const t = i / arcSteps;
+    const th = a1 + t * (a3 - a1);
+    arcPoints.push({
+      x: cx + arcRadius * Math.cos(th),
+      y: cy + arcRadius * Math.sin(th),
+    });
+  }
+
+  const arcPathD = arcPoints.reduce(
+    (acc, pt, idx) => (idx === 0 ? `M ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}` : `${acc} L ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`),
+    ''
+  );
+
+  // Intermediate arrow position & angle at Priority 2
+  const midArrowX = cx + arcRadius * Math.cos(a2);
+  const midArrowY = cy + arcRadius * Math.sin(a2);
+  // Tangent angle in direction of motion (SVG y is down)
+  const midArrowRot = (a2 + (isClockwiseApparent ? Math.PI / 2 : -Math.PI / 2)) * (180 / Math.PI);
 
   // Color helper for priorities
   const getPriorityColor = (p: number) => {
@@ -243,22 +272,39 @@ export const CIPProjection2D: React.FC<CIPProjection2DProps> = ({
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_280px] gap-6 items-center">
         {/* SVG Fischer Projection Stage */}
         <div className="relative flex items-center justify-center p-4 bg-slate-950/70 rounded-2xl border border-slate-800 min-h-[320px]">
+          {/* Apparent Direction Indicator Badge */}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/40 shadow-lg backdrop-blur-sm">
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${isClockwiseApparent ? 'bg-cyan-400' : 'bg-purple-400'} animate-pulse`} />
+            <span className="text-xs font-mono font-black text-cyan-200">
+              {isClockwiseApparent ? '↻ Clockwise (1 → 2 → 3)' : '↺ Counter-Clockwise (1 → 2 → 3)'}
+            </span>
+          </div>
+
           <svg viewBox="0 0 320 320" className="w-full max-w-[320px] h-auto select-none overflow-visible">
             <defs>
               <marker
                 id="cip-arrowhead"
-                markerWidth="8"
-                markerHeight="8"
-                refX="6"
-                refY="4"
+                markerWidth="9"
+                markerHeight="9"
+                refX="7"
+                refY="4.5"
                 orient="auto"
               >
-                <path d="M 1 1 L 7 4 L 1 7 Z" fill="#38bdf8" />
+                <path d="M 1 1.5 L 8 4.5 L 1 7.5 Z" fill="#38bdf8" />
               </marker>
-              <filter id="glow-cip" x="-20%" y="-20%" width="140%" height="140%">
+              <filter id="glow-cip" x="-30%" y="-30%" width="160%" height="160%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
+              <style>{`
+                @keyframes cipDashFlow {
+                  from { stroke-dashoffset: 0; }
+                  to { stroke-dashoffset: -24; }
+                }
+                .animate-cip-dash {
+                  animation: cipDashFlow 1.2s linear infinite;
+                }
+              `}</style>
             </defs>
 
             {/* In-plane Fischer Cross Bonds */}
@@ -298,22 +344,44 @@ export const CIPProjection2D: React.FC<CIPProjection2DProps> = ({
             </text>
 
             {/* 1 -> 2 -> 3 Circular Rotation Arc */}
-            <path
-              d={`M ${startX} ${startY} Q ${midX * 1.05} ${midY * 1.05} ${endX} ${endY}`}
-              fill="none"
-              stroke="#38bdf8"
-              strokeWidth="3.5"
-              strokeDasharray="6 3"
-              markerEnd="url(#cip-arrowhead)"
-              filter="url(#glow-cip)"
-            />
+            <g className="cip-arc-group">
+              {/* Background glow track */}
+              <path
+                d={arcPathD}
+                fill="none"
+                stroke="#0284c7"
+                strokeWidth="5"
+                opacity="0.35"
+                filter="url(#glow-cip)"
+              />
 
-            {/* Central Apparent Rotation Direction Indicator */}
-            <g transform={`translate(${cx}, ${cy + 34})`}>
-              <rect x="-42" y="-10" width="84" height="20" rx="10" fill="#091b2e" stroke="#38bdf8" strokeWidth="1" />
-              <text x="0" y="3.5" textAnchor="middle" fill="#7dd3fc" fontSize="9" fontWeight="bold">
-                {isClockwiseApparent ? '↻ Clockwise' : '↺ Counter-CW'}
-              </text>
+              {/* Animated active flowing dash path */}
+              <path
+                d={arcPathD}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth="3.5"
+                strokeDasharray="8 4"
+                className="animate-cip-dash"
+                markerEnd="url(#cip-arrowhead)"
+                filter="url(#glow-cip)"
+              />
+
+              {/* Start Node Pulse at Priority 1 */}
+              <circle
+                cx={arcPoints[0].x}
+                cy={arcPoints[0].y}
+                r="4.5"
+                fill="#f43f5e"
+                stroke="#ffffff"
+                strokeWidth="1.5"
+                filter="url(#glow-cip)"
+              />
+
+              {/* Intermediate Forward Arrowhead at Priority 2 */}
+              <g transform={`translate(${midArrowX}, ${midArrowY}) rotate(${midArrowRot})`}>
+                <polygon points="-7,-4.5 4,0 -7,4.5 -4,0" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+              </g>
             </g>
 
             {/* Top Substituent */}
