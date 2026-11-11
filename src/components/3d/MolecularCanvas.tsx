@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Environment, Grid, OrbitControls, PerspectiveCamera } from '@react-three/drei';
@@ -15,6 +15,7 @@ interface MolecularCanvasProps {
   dpr?: number | [number, number];
   autoRotate?: boolean;
   autoRotateSpeed?: number;
+  showAutoRotateButton?: boolean;
 }
 
 const ResponsiveCameraRig: React.FC<{
@@ -23,7 +24,7 @@ const ResponsiveCameraRig: React.FC<{
   resetKey: number;
   autoRotate?: boolean;
   autoRotateSpeed?: number;
-}> = ({ position, target, resetKey, autoRotate = true, autoRotateSpeed = 0.8 }) => {
+}> = ({ position, target, resetKey, autoRotate = false, autoRotateSpeed = 1.0 }) => {
   const { camera, size, invalidate } = useThree();
 
   useEffect(() => {
@@ -74,9 +75,16 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
   ariaLabel = 'Interactive 3D molecular stereochemistry model',
   frameloop = 'always',
   dpr = [1, 1.5],
-  autoRotate = true,
-  autoRotateSpeed = 0.8,
+  autoRotate: autoRotateProp = false,
+  autoRotateSpeed = 1.0,
+  showAutoRotateButton = true,
 }) => {
+  const [isRotating, setIsRotating] = useState<boolean>(autoRotateProp);
+
+  useEffect(() => {
+    setIsRotating(autoRotateProp);
+  }, [autoRotateProp]);
+
   const webGLAvailable = useMemo(() => {
     if (typeof document === 'undefined') return true;
     try {
@@ -106,13 +114,15 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
         dpr={dpr}
         frameloop={frameloop}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
+        isAutoRotating={isRotating}
+        onToggleAutoRotate={showAutoRotateButton ? () => setIsRotating((prev: boolean) => !prev) : undefined}
       >
         <color attach="background" args={['#06131d']} />
         <ResponsiveCameraRig
           position={cameraPosition}
           target={cameraTarget}
           resetKey={resetKey}
-          autoRotate={autoRotate}
+          autoRotate={isRotating}
           autoRotateSpeed={autoRotateSpeed}
         />
 

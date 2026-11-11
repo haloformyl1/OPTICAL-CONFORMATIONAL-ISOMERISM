@@ -9,7 +9,7 @@ import { ArrowLeftRight, CheckCircle2, XCircle, RotateCw, Layers, ShieldCheck, S
 export const EnantiomerCompareLab: React.FC = () => {
   const [selectedPairIndex, setSelectedPairIndex] = useState(1); // Default to Tartaric Acid
   const [superimposeProgress, setSuperimposeProgress] = useState<number>(0); // 0 = separate, 1 = overlaid
-  const [isAutoSuperimposing, setIsAutoSuperimposing] = useState<boolean>(true);
+  const [isAutoSuperimposing, setIsAutoSuperimposing] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'3d' | '2d-fischer' | 'split'>('3d');
   const [showLabels, setShowLabels] = useState(true);
   const [showPriorityBadges, setShowPriorityBadges] = useState(true);

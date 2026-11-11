@@ -60,7 +60,7 @@ export const CyclohexaneLab: React.FC = () => {
   const [substituent, setSubstituent] = useState<'H' | 'CH3' | 't-Bu'>('CH3');
   const [show13Diaxial, setShow13Diaxial] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('3d');
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const activeConf = conformationSteps[currentStep];
 

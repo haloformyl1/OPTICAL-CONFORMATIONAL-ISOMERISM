@@ -8,7 +8,7 @@ import { Play, Pause, RotateCcw, Zap, Compass, Info, ShieldAlert, Box, FileText,
 export const DihedralEnergyLab: React.FC = () => {
   const [molecule, setMolecule] = useState<'ethane' | 'propane' | 'butane' | 'glycol'>('butane');
   const [angle, setAngle] = useState<number>(180); // Default to anti 180
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'3d' | '2d-newman' | 'split'>('3d');
   const [cameraPerspective, setCameraPerspective] = useState<'perspective' | 'newman'>('perspective');
 

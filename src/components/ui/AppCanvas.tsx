@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState, forwardRef } from 'react';
 import { Canvas, type CanvasProps } from '@react-three/fiber';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, RotateCw, Maximize2, Minimize2 } from 'lucide-react';
 import * as THREE from 'three';
 
 interface AppCanvasProps extends CanvasProps {
   showCameraControls?: boolean;
+  isAutoRotating?: boolean;
+  onToggleAutoRotate?: () => void;
 }
 
 export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
-  ({ children, onCreated, showCameraControls = true, frameloop = 'always', ...props }, ref) => {
+  ({ children, onCreated, showCameraControls = true, isAutoRotating = false, onToggleAutoRotate, frameloop = 'always', ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [camera, setCamera] = useState<THREE.Camera | null>(null);
     const [initialPos, setInitialPos] = useState<THREE.Vector3 | null>(null);
@@ -164,6 +166,24 @@ export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
             >
               <RotateCcw className="h-5 w-5" aria-hidden="true" />
             </button>
+            {onToggleAutoRotate && (
+              <button
+                type="button"
+                onClick={onToggleAutoRotate}
+                className={`grid h-10 w-10 place-items-center rounded-lg border shadow-lg backdrop-blur-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 ${
+                  isAutoRotating
+                    ? 'border-cyan-400 bg-cyan-500/30 text-cyan-300 ring-2 ring-cyan-400/50 shadow-cyan-500/20'
+                    : 'border-white/20 bg-black/50 text-white hover:bg-black/70 hover:text-cyan-200'
+                }`}
+                aria-label={isAutoRotating ? 'Stop Auto-Rotate' : 'Start Auto-Rotate'}
+                title={isAutoRotating ? 'Stop Auto-Rotate (3D)' : 'Start Auto-Rotate (3D)'}
+              >
+                <RotateCw
+                  className={`h-5 w-5 ${isAutoRotating ? 'animate-spin' : ''}`}
+                  style={isAutoRotating ? { animationDuration: '4s' } : undefined}
+                />
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleCanvasFullscreen}
