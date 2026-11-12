@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { calculateCIP, type Position, type GroupItem } from './ChiralLockLab';
+import {
+  calculateCIP,
+  getUnanchoredPositions,
+  rotateUnanchoredCCW,
+  type Position,
+  type GroupItem,
+} from './ChiralLockLab';
 
-describe('ChiralLockLab - calculateCIP function', () => {
+describe('ChiralLockLab - calculateCIP & Stereochemical Dynamics', () => {
   const lacticAcidInitial: Record<Position, GroupItem> = {
     top: {
       id: 'cooh',
@@ -60,24 +66,7 @@ describe('ChiralLockLab - calculateCIP function', () => {
     expect(result.apparentDirection).toBe('Counter-Clockwise');
   });
 
-  it('Interaction 1 (Propeller Spin CCW): preserves (R) configuration after rotating bottom 3 groups', () => {
-    // CCW cycle: left receives right, bottom receives left, right receives bottom. Top fixed.
-    let current = { ...lacticAcidInitial };
-
-    for (let step = 1; step <= 3; step++) {
-      current = {
-        top: current.top,
-        left: current.right,
-        bottom: current.left,
-        right: current.bottom,
-      };
-      const result = calculateCIP(current);
-      expect(result.configuration).toBe('R');
-    }
-  });
-
-  it('Interaction 2 (Chemical Saw / Swap Horizontal Groups): inverts (R) to (S) enantiomer', () => {
-    // Swap left and right
+  it('Chemical Saw (Swap Horizontal Groups): inverts (R) to (S) enantiomer', () => {
     const swapped = {
       ...lacticAcidInitial,
       left: lacticAcidInitial.right,
@@ -87,8 +76,7 @@ describe('ChiralLockLab - calculateCIP function', () => {
     expect(result.configuration).toBe('S');
   });
 
-  it('Interaction 3 (180° In-Plane Flip): preserves (R) configuration as identical homomer', () => {
-    // 180° rotation: top <-> bottom, left <-> right
+  it('180° In-Plane Flip: preserves (R) configuration as identical homomer', () => {
     const flipped = {
       top: lacticAcidInitial.bottom,
       bottom: lacticAcidInitial.top,
@@ -98,5 +86,39 @@ describe('ChiralLockLab - calculateCIP function', () => {
     const result = calculateCIP(flipped);
     expect(result.configuration).toBe('R');
   });
-});
 
+  describe('Multi-Anchor Propeller Rotation Invariance', () => {
+    const anchors: Position[] = ['top', 'bottom', 'left', 'right'];
+
+    anchors.forEach((anchor) => {
+      it(`preserves (R) configuration when anchoring [${anchor.toUpperCase()}] and rotating unanchored 3 groups`, () => {
+        let current = { ...lacticAcidInitial };
+
+        // Test 3 consecutive rotations around this anchor (completing a full 360° cycle)
+        for (let step = 1; step <= 3; step++) {
+          current = rotateUnanchoredCCW(current, anchor);
+          // Anchor group must stay exactly in place
+          expect(current[anchor].id).toBe(lacticAcidInitial[anchor].id);
+
+          // Stereocenter configuration must remain strictly (R)
+          const result = calculateCIP(current);
+          expect(result.configuration).toBe('R');
+        }
+
+        // After 3 cyclic steps, the molecule must return to its exact initial configuration
+        expect(current.top.id).toBe(lacticAcidInitial.top.id);
+        expect(current.bottom.id).toBe(lacticAcidInitial.bottom.id);
+        expect(current.left.id).toBe(lacticAcidInitial.left.id);
+        expect(current.right.id).toBe(lacticAcidInitial.right.id);
+      });
+    });
+
+    it('returns the 3 distinct non-anchor positions in getUnanchoredPositions', () => {
+      anchors.forEach((anchor) => {
+        const unanchored = getUnanchoredPositions(anchor);
+        expect(unanchored.length).toBe(3);
+        expect(unanchored.includes(anchor)).toBe(false);
+      });
+    });
+  });
+});

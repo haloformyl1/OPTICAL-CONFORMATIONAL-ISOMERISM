@@ -13,13 +13,15 @@ import {
   AlertTriangle,
   Info,
   Layers,
-  ArrowRight,
   Zap,
   Play,
   Pause,
   SkipForward,
   SkipBack,
   Sliders,
+  Box,
+  Move,
+  Flame,
 } from 'lucide-react';
 import { BilingualText } from '../BilingualText';
 
@@ -48,7 +50,7 @@ export interface MoleculePreset {
 }
 
 // Preset 1: (2R)-Lactic Acid (as explicitly requested: -COOH top, -CH3 bottom, -OH right, -H left)
-const LACTIC_ACID_PRESET: MoleculePreset = {
+export const LACTIC_ACID_PRESET: MoleculePreset = {
   id: 'lactic-acid',
   name: { en: '(R)-Lactic Acid', bn: '(R)-ল্যাকটিক অ্যাসিড' },
   formula: 'C3H6O3',
@@ -110,7 +112,7 @@ const LACTIC_ACID_PRESET: MoleculePreset = {
 };
 
 // Preset 2: 1-Bromo-1-chloromethan-1-ol
-const HALO_ALCOHOL_PRESET: MoleculePreset = {
+export const HALO_ALCOHOL_PRESET: MoleculePreset = {
   id: 'halo-alcohol',
   name: { en: '1-Bromo-1-chloromethan-1-ol', bn: '১-ব্রোমো-১-ক্লোরোমিথান-১-অল' },
   formula: 'CH2BrClO',
@@ -171,7 +173,7 @@ const HALO_ALCOHOL_PRESET: MoleculePreset = {
   },
 };
 
-const PRESETS = [LACTIC_ACID_PRESET, HALO_ALCOHOL_PRESET];
+export const PRESETS = [LACTIC_ACID_PRESET, HALO_ALCOHOL_PRESET];
 
 const POS_COORDS: Record<Position, [number, number]> = {
   top: [0, 1],
@@ -242,7 +244,82 @@ export const calculateCIP = (groups: Record<Position, GroupItem>): CIPCalculatio
   };
 };
 
-export type AnimationMode = 'idle' | 'propeller' | 'saw' | 'flip180';
+/**
+ * Returns the 3 unanchored positions in cyclic order around the given anchor
+ */
+export const getUnanchoredPositions = (anchor: Position): [Position, Position, Position] => {
+  switch (anchor) {
+    case 'top':
+      return ['right', 'bottom', 'left'];
+    case 'bottom':
+      return ['left', 'top', 'right'];
+    case 'left':
+      return ['top', 'right', 'bottom'];
+    case 'right':
+      return ['bottom', 'left', 'top'];
+  }
+};
+
+/**
+ * Executes a counter-clockwise cyclic permutation of the 3 unanchored groups around the anchor.
+ * This is an even permutation (3-cycle), preserving the (R)/(S) configuration in 100% of cases.
+ */
+export const rotateUnanchoredCCW = (
+  groups: Record<Position, GroupItem>,
+  anchor: Position
+): Record<Position, GroupItem> => {
+  const next = { ...groups };
+  switch (anchor) {
+    case 'top':
+      next.left = groups.right;
+      next.bottom = groups.left;
+      next.right = groups.bottom;
+      break;
+    case 'bottom':
+      next.right = groups.left;
+      next.top = groups.right;
+      next.left = groups.top;
+      break;
+    case 'left':
+      next.bottom = groups.top;
+      next.right = groups.bottom;
+      next.top = groups.right;
+      break;
+    case 'right':
+      next.left = groups.top;
+      next.bottom = groups.left;
+      next.top = groups.bottom;
+      break;
+  }
+  return next;
+};
+
+/**
+ * Maps each position to its next target position under CCW propeller rotation around the given anchor
+ */
+export const getPropellerTargetPos = (pos: Position, anchor: Position): Position => {
+  if (pos === anchor) return anchor;
+  switch (anchor) {
+    case 'top':
+      if (pos === 'right') return 'left';
+      if (pos === 'left') return 'bottom';
+      return 'right';
+    case 'bottom':
+      if (pos === 'left') return 'right';
+      if (pos === 'right') return 'top';
+      return 'left';
+    case 'left':
+      if (pos === 'top') return 'bottom';
+      if (pos === 'bottom') return 'right';
+      return 'top';
+    case 'right':
+      if (pos === 'bottom') return 'top';
+      if (pos === 'top') return 'left';
+      return 'bottom';
+  }
+};
+
+export type AnimationMode = 'idle' | 'propeller' | 'saw' | 'flip180' | 'flip90';
 
 export interface StepNarrative {
   step: number;
@@ -252,20 +329,111 @@ export interface StepNarrative {
   chemicalPrinciple: { en: string; bn: string };
 }
 
-// Fixed dimensions for the Fischer canvas coordinate system
-const CANVAS_SIZE = 340;
-const CENTER_X = 170;
-const CENTER_Y = 170;
-const RADIUS = 95;
+// Coordinate system for the Fischer canvas
+const CANVAS_SIZE = 360;
+const CENTER_X = 180;
+const CENTER_Y = 180;
+const RADIUS = 105;
+
+const STATIC_POSITIONS: Record<Position, { x: number; y: number }> = {
+  top: { x: CENTER_X, y: CENTER_Y - RADIUS },
+  bottom: { x: CENTER_X, y: CENTER_Y + RADIUS },
+  left: { x: CENTER_X - RADIUS, y: CENTER_Y },
+  right: { x: CENTER_X + RADIUS, y: CENTER_Y },
+};
+
+/**
+ * Calculates smooth parametric trajectory for a group moving from `from` to `to`
+ */
+const interpolateTrajectory = (
+  from: Position,
+  to: Position,
+  t: number,
+  anchor: Position
+): { x: number; y: number } => {
+  const fromCoord = STATIC_POSITIONS[from];
+  const toCoord = STATIC_POSITIONS[to];
+
+  const isOpposite =
+    (from === 'left' && to === 'right') ||
+    (from === 'right' && to === 'left') ||
+    (from === 'top' && to === 'bottom') ||
+    (from === 'bottom' && to === 'top');
+
+  if (isOpposite) {
+    // Arc curves around the stereocenter away from the locked anchor
+    const midX = (fromCoord.x + toCoord.x) / 2;
+    const midY = (fromCoord.y + toCoord.y) / 2;
+
+    let pushX = 0;
+    let pushY = 0;
+    if (anchor === 'top') pushY = 46;
+    else if (anchor === 'bottom') pushY = -46;
+    else if (anchor === 'left') pushX = 46;
+    else if (anchor === 'right') pushX = -46;
+
+    const cx = midX + pushX;
+    const cy = midY + pushY;
+    const u = 1 - t;
+    return {
+      x: u * u * fromCoord.x + 2 * u * t * cx + t * t * toCoord.x,
+      y: u * u * fromCoord.y + 2 * u * t * cy + t * t * toCoord.y,
+    };
+  } else {
+    // Adjacent quarter-turn circular arc along perimeter
+    const angleFrom = Math.atan2(fromCoord.y - CENTER_Y, fromCoord.x - CENTER_X);
+    let angleTo = Math.atan2(toCoord.y - CENTER_Y, toCoord.x - CENTER_X);
+
+    let dAngle = angleTo - angleFrom;
+    while (dAngle > Math.PI) dAngle -= 2 * Math.PI;
+    while (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+
+    const currentAngle = angleFrom + dAngle * t;
+    return {
+      x: CENTER_X + RADIUS * Math.cos(currentAngle),
+      y: CENTER_Y + RADIUS * Math.sin(currentAngle),
+    };
+  }
+};
 
 export const ChiralLockLab: React.FC = () => {
   const [activePresetIndex, setActivePresetIndex] = useState(0);
   const activePreset = PRESETS[activePresetIndex];
 
-  // Base state of groups before or after an operation
+  // Base state of groups
   const [groups, setGroups] = useState<Record<Position, GroupItem>>(() => ({
     ...activePreset.initialGroups,
   }));
+
+  // NEW FEATURE 1: 2D vs 3D Reality View Toggle
+  const [show3DReality, setShow3DReality] = useState<boolean>(true);
+
+  // NEW FEATURE 2: Multi-Anchor Selection (default: 'top')
+  const [anchorPosition, setAnchorPosition] = useState<Position>('top');
+
+  // NEW FEATURE 3: Steric Crash State (triggered on illegal drag across center)
+  const [isCrashing, setIsCrashing] = useState<boolean>(false);
+  const [crashMessage, setCrashMessage] = useState<string | null>(null);
+
+  // NEW FEATURE 4: Whole Molecule Rotation Restriction (90° invalid vs 180° valid)
+  const [wholeMoleculeRotation, setWholeMoleculeRotation] = useState<number>(0);
+
+  // NEW FEATURE 5: Dynamic Action Summary Tracker
+  const [lastActionSummary, setLastActionSummary] = useState<{
+    type: 'rotation' | 'swap' | 'flip90' | 'flip180' | 'crash' | 'idle';
+    title: { en: string; bn: string };
+    ruleText: { en: string; bn: string };
+  }>({
+    type: 'idle',
+    title: {
+      en: 'Physical Lock Ready: Explore Rotations vs Bond Cleavage',
+      bn: 'ফিজিক্যাল লক প্রস্তুত: ঘূর্ণন বনাম বন্ধন ভাঙন পরীক্ষা করুন',
+    },
+    ruleText: {
+      en: 'Rotation = Tumbling in Space (Same Molecule). Swapping = Breaking Bonds (Enantiomer).',
+      bn: 'ঘূর্ণন = মহাশূন্যে সমাবর্তন (একই অণু)। অদলবদল = বন্ধন ভাঙন (এন্যানশিওমার)।',
+    },
+  });
 
   // Operation history counters
   const [bondsBrokenCount, setBondsBrokenCount] = useState(0);
@@ -276,11 +444,10 @@ export const ChiralLockLab: React.FC = () => {
   const [activeMode, setActiveMode] = useState<AnimationMode>('idle');
   const [animProgress, setAnimProgress] = useState<number>(0); // 0.0 to 1.0
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [totalRotationDeg, setTotalRotationDeg] = useState(0);
 
   const animFrameRef = useRef<number | null>(null);
   const animStartTimeRef = useRef<number | null>(null);
-  const ANIM_DURATION = 3200; // ms for a full step-by-step cycle
+  const ANIM_DURATION = 3000; // ms for a full step-by-step cycle
 
   // Initial reference configuration for comparison
   const initialCIP = useMemo(() => calculateCIP(activePreset.initialGroups), [activePreset]);
@@ -288,6 +455,12 @@ export const ChiralLockLab: React.FC = () => {
   // Current real-time CIP calculation based on active displayed state
   const currentCIP = useMemo(() => calculateCIP(groups), [groups]);
   const isEnantiomer = currentCIP.configuration !== initialCIP.configuration;
+
+  // Evaluate whether the current in-plane rotation angle violates the Fischer convention
+  const isInvalid90View = useMemo(() => {
+    const norm = ((wholeMoleculeRotation % 360) + 360) % 360;
+    return norm === 90 || norm === 270;
+  }, [wholeMoleculeRotation]);
 
   // Active step calculation (1, 2, 3, or 4)
   const currentStep = useMemo(() => {
@@ -304,15 +477,27 @@ export const ChiralLockLab: React.FC = () => {
     setBondsBrokenCount(0);
     setSingleBondRotationsCount(0);
     setFlips180Count(0);
-    setTotalRotationDeg(0);
+    setWholeMoleculeRotation(0);
+    setAnchorPosition('top');
+    setIsCrashing(false);
+    setCrashMessage(null);
     setActiveMode('idle');
     setAnimProgress(0);
     setIsPlaying(false);
+    setLastActionSummary({
+      type: 'idle',
+      title: {
+        en: 'Preset Loaded: Initial Configuration',
+        bn: 'নতুন অণু লোড হয়েছে: প্রারম্ভিক কনফিগারেশন',
+      },
+      ruleText: {
+        en: 'Rotation = Tumbling in Space (Same Molecule). Swapping = Breaking Bonds (Enantiomer).',
+        bn: 'ঘূর্ণন = মহাশূন্যে সমাবর্তন (একই অণু)। অদলবদল = বন্ধন ভাঙন (এন্যানশিওমার)।',
+      },
+    });
   }, [activePreset]);
 
-  // =========================================================================
-  // ANIMATION LOOP (Auto-play across 0.0 -> 1.0)
-  // =========================================================================
+  // ANIMATION LOOP
   useEffect(() => {
     if (!isPlaying) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -332,7 +517,6 @@ export const ChiralLockLab: React.FC = () => {
       if (progress < 1) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
-        // Animation completed its cycle: finalize the permanent state
         finalizeOperation(activeMode);
         setIsPlaying(false);
         animStartTimeRef.current = null;
@@ -349,29 +533,69 @@ export const ChiralLockLab: React.FC = () => {
   const finalizeOperation = (mode: AnimationMode) => {
     if (mode === 'propeller') {
       setSingleBondRotationsCount((prev) => prev + 1);
-      setGroups((prev) => ({
-        top: prev.top,
-        left: prev.right,
-        bottom: prev.left,
-        right: prev.bottom,
-      }));
+      setGroups((prev) => rotateUnanchoredCCW(prev, anchorPosition));
+      setLastActionSummary({
+        type: 'rotation',
+        title: {
+          en: `3D Propeller Rotation around Anchor (${groups[anchorPosition].formula})`,
+          bn: `লকড নোঙ্গর (${groups[anchorPosition].formula})-এর সাপেক্ষে ত্রিমাত্রিক প্রপেলার ঘূর্ণন সম্পন্ন`,
+        },
+        ruleText: {
+          en: 'Rotation = Tumbling in Space (Same Molecule). 0 bonds broken, distance invariants preserved. (R)/(S) strictly unchanged!',
+          bn: 'ঘূর্ণন = মহাশূন্যে সমাবর্তন (একই অণু)। ০টি বন্ধন ভাঙা হয়েছে, দূরত্বের প্রতিসাম্য অক্ষত। (R)/(S) হুবহু সংরক্ষিত!',
+        },
+      });
     } else if (mode === 'saw') {
       setBondsBrokenCount((prev) => prev + 1);
       setGroups((prev) => ({
-        top: prev.top,
-        bottom: prev.bottom,
+        ...prev,
         left: prev.right,
         right: prev.left,
       }));
+      setLastActionSummary({
+        type: 'swap',
+        title: {
+          en: 'Chemical Saw: 2 Covalent σ-Bonds Cleaved & Swapped',
+          bn: 'রাসায়নিক করাত: ২টি সমযোজী সিগমা বন্ধন বিদারণ ও গ্রুপের অদলবদল',
+        },
+        ruleText: {
+          en: 'Swapping = Breaking Bonds (Enantiomer). 1 Swap changes parity from even to odd → Configuration Inverted!',
+          bn: 'অদলবদল = বন্ধন ভাঙন (এন্যানশিওমার)। ১টি সোয়াপ বিন্যাস প্যারিটি পরিবর্তন করে → কনফিগারেশন রূপান্তরিত!',
+        },
+      });
     } else if (mode === 'flip180') {
       setFlips180Count((prev) => prev + 1);
-      setTotalRotationDeg((prev) => prev + 180);
+      setWholeMoleculeRotation((prev) => prev + 180);
       setGroups((prev) => ({
         top: prev.bottom,
         bottom: prev.top,
         left: prev.right,
         right: prev.left,
       }));
+      setLastActionSummary({
+        type: 'flip180',
+        title: {
+          en: '180° In-Plane Flip: Fischer View Preserved',
+          bn: '১৮০° সমতলীয় ঘূর্ণন: ফিশার কনভেনশন সম্পূর্ণ সংরক্ষিত',
+        },
+        ruleText: {
+          en: '180° Flip keeps vertical rungs vertical (dashes) and horizontal rungs horizontal (wedges). Result is 100% Identical Homomer!',
+          bn: '১৮০° ঘূর্ণনে উল্লম্ব বন্ধন উল্লম্ব (ড্যাশ) এবং অনুভূমিক বন্ধন অনুভূমিক (ওয়েজ) থাকে। ফলাফল ১০০% অভিন্ন হোমোমার!',
+        },
+      });
+    } else if (mode === 'flip90') {
+      setWholeMoleculeRotation((prev) => prev + 90);
+      setLastActionSummary({
+        type: 'flip90',
+        title: {
+          en: '⚠️ 90° In-Plane Turn: FISCHER CONVENTION VIOLATED',
+          bn: '⚠️ ৯০° সমতলীয় ঘূর্ণন: ফিশার নিয়ম লঙ্ঘিত',
+        },
+        ruleText: {
+          en: 'Invalid Fischer View! Rotating by 90° forces forward-pointing wedges onto vertical axis, falsifying apparent CIP configuration.',
+          bn: 'অবৈধ ফিশার রূপ! ৯০° ঘোরালে সামনের ওয়েজ বন্ধনগুলো উল্লম্ব অক্ষে চলে যায়, ফলে আপাত CIP কনফিগারেশন ভুলভাবে উল্টে যায়।',
+        },
+      });
     }
     setAnimProgress(0);
     setActiveMode('idle');
@@ -388,9 +612,68 @@ export const ChiralLockLab: React.FC = () => {
   // Jump directly to a step (0%, 33%, 66%, 100%)
   const jumpToStep = (stepNum: number) => {
     setIsPlaying(false);
-    if (activeMode === 'idle') setActiveMode('saw'); // default to saw demo if idle
+    if (activeMode === 'idle') setActiveMode('saw');
     const progressMap = [0.1, 0.4, 0.7, 0.98];
     setAnimProgress(progressMap[stepNum - 1]);
+  };
+
+  // Trigger Steric Crash when student attempts flat 2D drag through the core
+  const triggerStericCrash = () => {
+    setIsCrashing(true);
+    setCrashMessage(
+      'Physical Blockade! The 109.5° tetrahedral angle prevents groups from sliding past each other.'
+    );
+    setLastActionSummary({
+      type: 'crash',
+      title: {
+        en: 'Steric Crash! Physical Blockade in Tetrahedral Core',
+        bn: 'স্টেরিক সংঘর্ষ! চতুস্তলকীয় কেন্দ্রে শারীরিক বাধা',
+      },
+      ruleText: {
+        en: 'Physical Blockade! In 3D tetrahedral geometry, bonded electron clouds cannot slide through each other in 2D. You must cleave bonds with the Chemical Saw!',
+        bn: 'শারীরিক বাধা! ত্রিমাত্রিক চতুস্তলকীয় জ্যামিতিতে ইলেকট্রন মেঘ বন্ধন না ভেঙে একে অপরকে অতিক্রম করতে পারে না। অদলবদলের জন্য রাসায়নিক করাত ব্যবহার আবশ্যক!',
+      },
+    });
+
+    setTimeout(() => {
+      setIsCrashing(false);
+    }, 3800);
+  };
+
+  // Quick action: Rotate whole molecule by 90 degrees
+  const handleRotate90 = () => {
+    if (isPlaying) return;
+    const newAngle = wholeMoleculeRotation + 90;
+    setWholeMoleculeRotation(newAngle);
+    const isNowInvalid = newAngle % 180 !== 0;
+
+    setLastActionSummary({
+      type: isNowInvalid ? 'flip90' : 'flip180',
+      title: isNowInvalid
+        ? {
+            en: '⚠️ 90° In-Plane Turn: Convention Violated!',
+            bn: '⚠️ ৯০° ঘূর্ণন: ফিশার কনভেনশন লঙ্ঘিত!',
+          }
+        : {
+            en: '180° In-Plane Orientation Restored!',
+            bn: '১৮০° সমতলীয় অবস্থান পুনরুদ্ধার!',
+          },
+      ruleText: isNowInvalid
+        ? {
+            en: 'Invalid Fischer View! Wedges pointing towards you are now vertical rungs. On exams, 90° rotations are strictly forbidden!',
+            bn: 'অবৈধ ফিশার চিত্র! আপনার দিকে তাক করা ওয়েজ বন্ধনগুলো উল্লম্ব হয়ে গেছে। পরীক্ষায় ৯০° আবর্তন কঠোরভাবে নিষিদ্ধ!',
+          }
+        : {
+            en: 'Valid Fischer view restored! Horizontal rungs are wedges and vertical rungs are dashes once again.',
+            bn: 'বৈধ ফিশার রূপ পুনরুদ্ধার হয়েছে! অনুভূমিক বন্ধন পুনরায় ওয়েজ ও উল্লম্ব বন্ধন ড্যাশে পরিণত হয়েছে।',
+          },
+    });
+  };
+
+  // Quick action: Rotate whole molecule by 180 degrees
+  const handleRotate180 = () => {
+    if (isPlaying) return;
+    startInteraction('flip180');
   };
 
   // Reset to initial state
@@ -400,15 +683,27 @@ export const ChiralLockLab: React.FC = () => {
     setBondsBrokenCount(0);
     setSingleBondRotationsCount(0);
     setFlips180Count(0);
-    setTotalRotationDeg(0);
+    setWholeMoleculeRotation(0);
+    setAnchorPosition('top');
+    setIsCrashing(false);
+    setCrashMessage(null);
     setActiveMode('idle');
     setAnimProgress(0);
     setIsPlaying(false);
+    setLastActionSummary({
+      type: 'idle',
+      title: {
+        en: 'Reset to Initial Stereochemical State',
+        bn: 'প্রারম্ভিক স্টেরিওরাসায়নিক অবস্থানে রিসেট করা হয়েছে',
+      },
+      ruleText: {
+        en: 'Rotation = Tumbling in Space (Same Molecule). Swapping = Breaking Bonds (Enantiomer).',
+        bn: 'ঘূর্ণন = মহাশূন্যে সমাবর্তন (একই অণু)। অদলবদল = বন্ধন ভাঙন (এন্যানশিওমার)।',
+      },
+    });
   };
 
-  // =========================================================================
-  // STEP NARRATIVE CONTENT FOR EACH INTERACTION
-  // =========================================================================
+  // Step narrative content for current frame
   const currentNarrative: StepNarrative = useMemo(() => {
     if (activeMode === 'saw') {
       switch (currentStep) {
@@ -416,51 +711,51 @@ export const ChiralLockLab: React.FC = () => {
           return {
             step: 1,
             title: {
-              en: 'Step 1: Identify & Target Covalent Bonds',
-              bn: 'ধাপ ১: সমযোজী বন্ধন লক্ষ্য নির্ধারণ',
+              en: 'Step 1: Target Covalent σ-Bonds for Cleavage',
+              bn: 'ধাপ ১: বিদারণের জন্য সমযোজী সিগমা বন্ধন চিহ্নিতকরণ',
             },
-            badgeText: 'TARGETING BONDS',
+            badgeText: 'TARGETING BONDS 🎯',
             description: {
-              en: `Targeting the horizontal bonds connecting ${groups.left.formula} and ${groups.right.formula} to the chiral stereocenter C*. Notice that horizontal bonds represent wedges projecting out of the screen toward you.`,
-              bn: `কাইরাল কেন্দ্র C*-এর সাথে যুক্ত অনুভূমিক বন্ধন ${groups.left.formula} এবং ${groups.right.formula}-কে লক্ষ্য করা হচ্ছে। অনুভূমিক বন্ধনগুলি আপনার দিকে মুখ করে থাকা ওয়েজ।`,
+              en: `Targeting horizontal bonds connecting ${groups.left.formula} and ${groups.right.formula} to C*. In 3D reality, these are wedged bonds extending out towards you.`,
+              bn: `C*-এর সাথে যুক্ত ${groups.left.formula} ও ${groups.right.formula}-এর অনুভূমিক বন্ধন লক্ষ্য করা হচ্ছে। ত্রিমাত্রিক বাস্তবে এগুলি সামনের দিকে প্রসারিত ওয়েজ বন্ধন।`,
             },
             chemicalPrinciple: {
-              en: 'Tetrahedral geometry locks substituents in space. They cannot swap without severing sigma bonds.',
-              bn: 'চতুস্তলকীয় জ্যামিতিতে পরমাণুগুলি আবদ্ধ থাকে। সিগমা বন্ধন না ভেঙে এরা স্থান পরিবর্তন করতে পারে না।',
+              en: '109.5° tetrahedral geometry locks groups rigidly. They cannot swap without severing sigma bonds.',
+              bn: '১০৯.৫° চতুস্তলকীয় কোণ পরমাণুগুলোকে দৃঢ়ভাবে আবদ্ধ রাখে। সিগমা বন্ধন না ভেঙে এরা স্থান বদলাতে পারে না।',
             },
           };
         case 2:
           return {
             step: 2,
             title: {
-              en: 'Step 2: Covalent Bond Cleavage (Bonds Severed!)',
-              bn: 'ধাপ ২: সমযোজী বন্ধন বিদারণ (বন্ধন ভাঙন!)',
+              en: 'Step 2: Covalent Cleavage (Laser Fracture Stubs)',
+              bn: 'ধাপ ২: সমযোজী বন্ধন ভাঙন (লেজার ফ্র্যাকচার স্টাব)',
             },
             badgeText: 'BONDS CLEAVED ⚡',
             description: {
-              en: `Energy is supplied to sever the two horizontal sigma bonds! ${groups.left.formula} and ${groups.right.formula} physically detach from the stereocenter, creating floating fragments. 2 covalent bonds are broken!`,
-              bn: `শক্তি প্রয়োগ করে দুটি অনুভূমিক সিগমা বন্ধন ভেঙে ফেলা হয়েছে! ${groups.left.formula} এবং ${groups.right.formula} বিচ্ছিন্ন হয়ে মুক্ত অংশে পরিণত হয়েছে। ২টি বন্ধন ভাঙা হলো!`,
+              en: `Chemical energy ruptures both horizontal bonds! ${groups.left.formula} and ${groups.right.formula} physically detach, leaving active coordination stubs on the chiral center.`,
+              bn: `রাসায়নিক শক্তিতে উভয় অনুভূমিক বন্ধন ভেঙে গেল! ${groups.left.formula} ও ${groups.right.formula} বিচ্ছিন্ন হয়ে মুক্ত অংশে পরিণত হয়েছে।`,
             },
             chemicalPrinciple: {
-              en: 'Bond dissociation energy required. The stereocenter loses its tetrahedral locking temporarily.',
-              bn: 'বন্ধন বিয়োজন শক্তি প্রয়োজন। স্টেরিওসেন্টারটি সাময়িকভাবে চতুস্তলকীয় বন্ধন হারায়।',
+              en: 'Bond dissociation energy supplied. The stereocenter temporarily loses its tetrahedral coordinate lock.',
+              bn: 'বন্ধন বিয়োজন শক্তি ব্যয়িত। স্টেরিওকেন্দ্রটি সাময়িকভাবে চতুস্তলকীয় অক্ষীয় বন্ধন হারায়।',
             },
           };
         case 3:
           return {
             step: 3,
             title: {
-              en: 'Step 3: Mid-Air Spatial Cross-Over (Inversion in Transit)',
-              bn: 'ধাপ ৩: শূন্যে স্থান অতিক্রম (কাইরালিটি পরিবর্তন)',
+              en: 'Step 3: Mid-Air Spatial Crossover (Parity Inversion)',
+              bn: 'ধাপ ৩: শূন্যে স্থান অতিক্রম (প্যারিটি রূপান্তর)',
             },
             badgeText: 'CROSSING OVER 🔀',
             description: {
-              en: `The detached groups physically cross over each other in space! ${groups.right.formula} arcs UPWARD over the central carbon, while ${groups.left.formula} arcs DOWNWARD. They exchange sides in space.`,
-              bn: `বিচ্ছিন্ন গ্রুপ দুটি শূন্যে একে অপরকে অতিক্রম করছে! ${groups.right.formula} উপরের দিক দিয়ে এবং ${groups.left.formula} নিচের দিক দিয়ে আবর্তিত হয়ে স্থান অদলবদল করছে।`,
+              en: `The detached groups physically cross over in mid-air! ${groups.right.formula} arcs UPWARD over the core, while ${groups.left.formula} arcs DOWNWARD, transposing their 3D coordinates.`,
+              bn: `বিচ্ছিন্ন গ্রুপ দুটি শূন্যে একে অপরকে অতিক্রম করছে! ${groups.right.formula} উপর দিয়ে এবং ${groups.left.formula} নিচ দিয়ে পথ অতিক্রম করে স্থান বিনিময় করছে।`,
             },
             chemicalPrinciple: {
-              en: '1 single swap changes the permutation parity of the 4 coordinates from even to odd (parity inversion).',
-              bn: '১টি একক অদলবদল ৪টি স্থানাঙ্কের বিন্যাস প্যারিটি পরিবর্তন করে (ইনভার্সন)।',
+              en: '1 single transposition changes mathematical permutation parity from even to odd (parity inversion).',
+              bn: '১টি একক সোয়াপ বিন্যাস প্যারিটি যুগ্ম থেকে অযুগ্মতে রূপান্তর করে (প্যারিটি ইনভার্সন)।',
             },
           };
         case 4:
@@ -468,71 +763,72 @@ export const ChiralLockLab: React.FC = () => {
           return {
             step: 4,
             title: {
-              en: 'Step 4: Re-attachment & Inversion to Enantiomer',
-              bn: 'ধাপ ৪: পুনঃসংযোজন ও এন্যানশিওমারে রূপান্তর',
+              en: 'Step 4: Re-attachment & Enantiomer Inversion (R ⇄ S)',
+              bn: 'ধাপ ৪: পুনঃসংযোজন ও এন্যানশিওমারে রূপান্তর (R ⇄ S)',
             },
             badgeText: 'ENANTIOMER CREATED ✨',
             description: {
-              en: `The groups snap into the opposite positions and new covalent bonds reform! Because exactly 1 swap was executed, the stereocenter has inverted into its non-superimposable mirror image (Enantiomer)!`,
-              bn: `গ্রুপ দুটি বিপরীত প্রান্তে গিয়ে নতুন বন্ধন তৈরি করল! ঠিক ১টি অদলবদল সম্পন্ন হওয়ায় কনফিগারেশন উল্টে গিয়ে এন্যানশিওমার সৃষ্টি হলো!`,
+              en: `New covalent bonds reform in opposite sockets! Because exactly 1 swap was executed, the stereocenter has inverted into its non-superimposable mirror image!`,
+              bn: `বিপরীত প্রান্তে নতুন সমযোজী বন্ধন গঠিত হয়েছে! ঠিক ১টি অদলবদল সম্পন্ন হওয়ায় অণুটি নন-সুপারইম্পোজিবল দর্পণ প্রতিবিম্বে (এন্যানশিওমার) রূপান্তরিত হলো!`,
             },
             chemicalPrinciple: {
-              en: 'Golden Rule: 1 Swap = Inversion of Configuration (R ⇄ S). Non-superimposable enantiomer formed.',
+              en: 'Golden Rule: 1 Swap = Inversion of Configuration (R ⇄ S). Non-superimposable enantiomer created.',
               bn: 'সোনালী সূত্র: ১টি অদলবদল = কনফিগারেশনের রূপান্তর (R ⇄ S)। অপ্রকৃত দর্পণ প্রতিবিম্ব তৈরি হয়।',
             },
           };
       }
     } else if (activeMode === 'propeller') {
+      const anchorGrp = groups[anchorPosition];
       switch (currentStep) {
         case 1:
           return {
             step: 1,
             title: {
-              en: 'Step 1: Lock Top Axis as Fixed Pivot',
-              bn: 'ধাপ ১: শীর্ষ বন্ধনকে স্থির ঘূর্ণন অক্ষ হিসেবে লক করা',
+              en: `Step 1: Clamp Anchor [${anchorGrp.formula}] as Rigid Spindle`,
+              bn: `ধাপ ১: নোঙ্গর [${anchorGrp.formula}]-কে স্থির ঘূর্ণন অক্ষ হিসেবে লক করা`,
             },
-            badgeText: 'AXIS LOCKED 🔒',
+            badgeText: 'ANCHOR CLAMPED 🔒',
             description: {
-              en: `The top C-${groups.top.formula} bond is clamped tightly as a stationary rotational axis. It will NOT be broken, detached, or moved. It acts as the spindle of a 3D propeller.`,
-              bn: `উপরের C-${groups.top.formula} বন্ধনটি একটি স্থির অক্ষ হিসেবে লক করা হলো। এটি অক্ষত থাকবে এবং প্রপেলারের স্পিন্ডল হিসেবে কাজ করবে।`,
+              en: `The C-${anchorGrp.formula} bond is clamped tight as the stationary spindle. Any of the 4 groups can serve as this anchor! ZERO bonds on this axis will be cleaved.`,
+              bn: `C-${anchorGrp.formula} বন্ধনটি একটি অনড় অক্ষ হিসেবে লক করা হলো। যেকোনো গ্রুপকেই নোঙ্গর করা যায়! এই অক্ষের কোনো বন্ধন ভাঙা হবে না।`,
             },
             chemicalPrinciple: {
-              en: 'Single sigma bonds have cylindrical symmetry and allow free rotation in space without breaking bonds.',
-              bn: 'একক সিগমা বন্ধনের সিলিন্ড্রিক্যাল প্রতিসাম্য থাকায় বন্ধন না ভেঙে মুক্ত ঘূর্ণন সম্ভব।',
+              en: 'Single covalent σ-bonds possess cylindrical symmetry and allow free continuous rotation in space SO(3).',
+              bn: 'একক সমযোজী সিগমা বন্ধনের সিলিন্ড্রিক্যাল প্রতিসাম্য থাকায় ত্রিমাত্রিক স্থানে মুক্ত ঘূর্ণন সম্ভব।',
             },
           };
         case 2:
           return {
             step: 2,
             title: {
-              en: 'Step 2: Activate 3D Tripod Circular Orbit',
-              bn: 'ধাপ ২: ৩ডি ট্রাইপড বৃত্তাকার পথ সক্রিয়করণ',
+              en: 'Step 2: Activate 3-Group Circular Orbit Base',
+              bn: 'ধাপ ২: ৩-গ্রুপের বৃত্তাকার ট্রাইপড পথ সক্রিয়করণ',
             },
-            badgeText: 'TRIPOD ORBIT ⭕',
+            badgeText: 'ORBIT ACTIVE ⭕',
             description: {
-              en: `The remaining three substituents (${groups.right.formula}, ${groups.left.formula}, ${groups.bottom.formula}) form a tetrahedral tripod. A circular trajectory appears connecting them.`,
-              bn: `বাকি তিনটি গ্রুপ (${groups.right.formula}, ${groups.left.formula}, ${groups.bottom.formula}) একটি চতুস্তলকীয় ট্রাইপড গঠন করে। এদের সংযোগকারী বৃত্তাকার পথ দৃশ্যমান হয়েছে।`,
+              en: `The remaining three substituents form a tetrahedral tripod base opposite the anchor. A circular trajectory connects them in 3D space.`,
+              bn: `নোঙ্গরের বিপরীতে থাকা বাকি ৩টি গ্রুপ একটি চতুস্তলকীয় ট্রাইপড গঠন করে। মহাশূন্যে তাদের সংযোগকারী বৃত্তাকার পথ দৃশ্যমান হয়েছে।`,
             },
             chemicalPrinciple: {
-              en: 'Rotating a tripod around the 3-fold axis corresponds to a cyclic permutation of 3 groups (an even permutation).',
-              bn: '৩-গ্রুপের ট্রাইপড ঘূর্ণন একটি সাইক্লিক পারমিউটেশন (যুগ্ম পারমিউটেশন)।',
+              en: 'Rotating a 3-leg tripod corresponds to a cyclic permutation of 3 elements (a 3-cycle, an even permutation).',
+              bn: '৩-গ্রুপ ট্রাইপড ঘূর্ণন একটি ৩-চক্র যুগ্ম পারমিউটেশন।',
             },
           };
         case 3:
           return {
             step: 3,
             title: {
-              en: 'Step 3: Simultaneous 120° Counter-Clockwise Rotation',
-              bn: 'ধাপ ৩: একসাথে ১২০° ঘড়ির কাঁটার বিপরীত ঘূর্ণন',
+              en: 'Step 3: Simultaneous 120° CCW Rotation Along Track',
+              bn: 'ধাপ ৩: বৃত্তাকার পথে ১২০° ঘড়ির কাঁটার বিপরীত ঘূর্ণন',
             },
-            badgeText: 'ROTATING 120° 🔄',
+            badgeText: 'SPINNING 120° 🔄',
             description: {
-              en: `All three groups glide simultaneously along their curved circular track! ${groups.right.formula} sweeps to Left, ${groups.left.formula} glides to Bottom, and ${groups.bottom.formula} moves to Right. ZERO bonds are cleaved!`,
-              bn: `তিনটি গ্রুপ একই সাথে তাদের বৃত্তাকার পথে এগিয়ে যাচ্ছে! কোনো বন্ধন ভাঙা হচ্ছে না, কেবল মহাশূন্যে ত্রিমাত্রিক ঘূর্ণন ঘটছে!`,
+              en: `All three unanchored groups glide harmoniously along their orbit! Zero covalent bonds are broken; the molecule is merely tumbling in 3D Euclidean space.`,
+              bn: `৩টি গ্রুপ একই সাথে বৃত্তাকার ট্র্যাকে মসৃণভাবে এগিয়ে যাচ্ছে! কোনো বন্ধন ভাঙা হচ্ছে না, কেবল মহাশূন্যে ত্রিমাত্রিক আবর্তন ঘটছে।`,
             },
             chemicalPrinciple: {
-              en: 'Rigid body rotation in 3D Euclidean space SO(3) preserves chiral orientation and distance invariants.',
-              bn: 'ত্রিমাত্রিক ইউক্লিডীয় স্থানে ঘূর্ণন কাইরাল দিক এবং দূরত্বের সমতা বজায় রাখে।',
+              en: 'Rigid body rotation in Euclidean space SO(3) preserves chiral orientation and all internal distance invariants.',
+              bn: 'ইউক্লিডীয় স্থানে অনমনীয় আবর্তন কাইরাল দিক এবং দূরত্বের সমতা সম্পূর্ণ বজায় রাখে।',
             },
           };
         case 4:
@@ -540,173 +836,97 @@ export const ChiralLockLab: React.FC = () => {
           return {
             step: 4,
             title: {
-              en: 'Step 4: Settle into New Fischer Projection (R/S Unchanged!)',
-              bn: 'ধাপ ৪: নতুন ফিশার অবস্থানে স্থির (R/S অপরিবর্তিত!)',
+              en: 'Step 4: Arrival at New Fischer Rungs (R/S STRICTLY PRESERVED!)',
+              bn: 'ধাপ ৪: নতুন ফিশার অবস্থানে স্থির (R/S অপরিবর্তিত ও সংরক্ষিত!)',
             },
-            badgeText: 'CONFIGURATION PRESERVED ✓',
+            badgeText: 'CONFIGURATION INVARIANT ✓',
             description: {
-              en: `The three groups arrive at their new rungs. Notice: although the groups have changed positions on the cross, the true 3D stereocenter configuration remains strictly identical!`,
-              bn: `তিনটি গ্রুপ নতুন অবস্থানে পৌঁছাল। লক্ষ্য করুন: ক্রসে গ্রুপগুলোর অবস্থান বদলালেও আসল ত্রিমাত্রিক কনফিগারেশন অপরিবর্তিত রয়েছে!`,
+              en: `The three groups settle into their new rungs. Although the 2D cross looks altered, the stereocenter configuration is strictly identical homomer!`,
+              bn: `গ্রুপগুলো নতুন অবস্থানে স্থিত হলো। ক্রসের রূপ দৃশ্যত বদলালেও মূল ত্রিমাত্রিক কনফিগারেশন হুবহু অভিন্ন ও সংরক্ষিত রয়েছে!`,
             },
             chemicalPrinciple: {
-              en: 'Rule: 3-Group Rotation (Cyclic Permutation) = Exactly Identical Homomer. Configuration is preserved!',
-              bn: 'সূত্র: ৩-গ্রুপ ঘূর্ণন = হুবহু অভিন্ন হোমোমার। কনফিগারেশন সংরক্ষিত থাকে!',
+              en: 'Universal Law: 3-Group Rotation around ANY Anchor = Exactly Identical Homomer. Parity is invariant.',
+              bn: 'সার্বজনীন নিয়ম: যেকোনো নোঙ্গরের সাপেক্ষে ৩-গ্রুপ ঘূর্ণন = হুবহু অভিন্ন হোমোমার। প্যারিটি সংরক্ষিত।',
             },
           };
       }
     } else if (activeMode === 'flip180') {
-      switch (currentStep) {
-        case 1:
-          return {
-            step: 1,
-            title: {
-              en: 'Step 1: Original In-Plane Fischer Orientation',
-              bn: 'ধাপ ১: মূল সমতলীয় ফিশার অবস্থান',
-            },
-            badgeText: 'STARTING VIEW 📐',
-            description: {
-              en: `Standard Fischer rules: Vertical rungs project AWAY from viewer (dashes), while horizontal rungs project TOWARDS viewer (wedges).`,
-              bn: `প্রমাণ ফিশার নিয়ম: উল্লম্ব বন্ধন পাতার পিছনে (ড্যাশ) এবং অনুভূমিক বন্ধন সামনে (ওয়েজ)।`,
-            },
-            chemicalPrinciple: {
-              en: 'A 2D Fischer cross is a shorthand projection of a 3D tetrahedron.',
-              bn: 'একটি ২ডি ফিশার ক্রস হলো ৩ডি চতুস্তলকের সংক্ষিপ্ত অভিক্ষেপ।',
-            },
-          };
-        case 2:
-        case 3:
-          return {
-            step: currentStep,
-            title: {
-              en: 'Step 2 & 3: Smooth 180° In-Plane Spin',
-              bn: 'ধাপ ২ ও ৩: সমতলে ১৮০° মসৃণ ঘূর্ণন',
-            },
-            badgeText: 'SPINNING 180° 🔄',
-            description: {
-              en: `The entire molecule spins smoothly like a steering wheel in the plane of the screen. Notice that spinning 180° maintains the vertical rungs as vertical and horizontal as horizontal!`,
-              bn: `পুরো অণুটি সমতলে ১৮০° ঘুরছে। লক্ষ্য করুন ১৮০° ঘোরালে উল্লম্ব বন্ধন উল্লম্ব এবং অনুভূমিক বন্ধন অনুভূমিকই থাকে!`,
-            },
-            chemicalPrinciple: {
-              en: '90° in-plane rotation is strictly FORBIDDEN because it converts dashes to wedges. 180° rotation is ALLOWED.',
-              bn: '৯০° ঘূর্ণন নিষিদ্ধ কারণ তা ড্যাশ ও ওয়েজ বদলে দেয়। ১৮০° ঘূর্ণন সম্পূর্ণ অনুমোদিত।',
-            },
-          };
-        case 4:
-        default:
-          return {
-            step: 4,
-            title: {
-              en: 'Step 4: Superimposable Identical Homomer',
-              bn: 'ধাপ ৪: উপরিপাতযোগ্য অভিন্ন হোমোমার',
-            },
-            badgeText: 'HOMOMER CONFIRMED ✓',
-            description: {
-              en: `180° rotation equals TWO simultaneous swaps (Top ↔ Bottom and Left ↔ Right). Two swaps cancel out parity changes: (-1) × (-1) = +1. The structure is 100% superimposable!`,
-              bn: `১৮০° ঘূর্ণন মানে একই সাথে দুটি অদলবদল (উপর ↔ নিচ এবং বাম ↔ ডান)। দুটি অদলবদল কাইরালিটি অক্ষত রাখে: (-১) × (-১) = +১।`,
-            },
-            chemicalPrinciple: {
-              en: 'Even number of swaps (2) preserves stereocenter configuration. Homomer verified.',
-              bn: 'যুগ্ম সংখ্যক অদলবদল (২টি) কনফিগারেশন সংরক্ষণ করে। অভিন্নতা প্রমাণিত।',
-            },
-          };
-      }
+      return {
+        step: 4,
+        title: {
+          en: '180° In-Plane Flip: Permissible Homomer Operation',
+          bn: '১৮০° সমতলীয় উল্টানো: অনুমোদিত হোমোমার রূপান্তর',
+        },
+        badgeText: 'VALID FLIP ✓',
+        description: {
+          en: 'Spinning the cross 180° equals TWO simultaneous group swaps (Top ↔ Bottom and Left ↔ Right). Two swaps cancel out parity changes (-1 × -1 = +1)!',
+          bn: '১৮০° সমতলীয় ঘূর্ণন মানে একই সাথে ২টি অদলবদল (উপর ↔ নিচ এবং বাম ↔ ডান)। ২টি অদলবদল কাইরালিটি অক্ষত রাখে (-১ × -১ = +১)!',
+        },
+        chemicalPrinciple: {
+          en: '180° rotation preserves horizontal wedges and vertical dashes. Superimposable identical homomer.',
+          bn: '১৮০° ঘূর্ণন অনুভূমিক ওয়েজ ও উল্লম্ব ড্যাশ অক্ষত রাখে। হুবহু উপরিপাতযোগ্য হোমোমার।',
+        },
+      };
     } else {
-      // Idle state
       return {
         step: 1,
         title: {
-          en: 'Interactive Ready: Select an Operation Below',
-          bn: 'প্রস্তুত: নিচে একটি ইন্টারঅ্যাকশন নির্বাচন করুন',
+          en: 'Interactive Ready: Select Any Action Below',
+          bn: 'সিমুলেটর প্রস্তুত: নিচের যেকোনো ইন্টারঅ্যাকশন নির্বাচন করুন',
         },
-        badgeText: 'READY TO EXPLORE 🔬',
+        badgeText: 'EXPLORE STEREOCHEMISTRY 🔬',
         description: {
-          en: 'Click "Rotate Single Bonds" to witness 3D tripod rotation preserving (R)/(S), or "Swap Horizontal Groups" to watch bond cleavage and enantiomer creation step-by-step!',
-          bn: 'একক বন্ধন ঘূর্ণন দেখতে "একক বন্ধন আবর্তন" অথবা বন্ধন ভেঙে এন্যানশিওমার তৈরি দেখতে "অনুভূমিক গ্রুপ অদলবদল" বোতামে ক্লিক করুন!',
+          en: 'Click any group to set as the Anchor, drag the left group to test steric blockade, or toggle 3D Reality to inspect tetrahedral wedges and dashes!',
+          bn: 'যেকোনো গ্রুপে ক্লিক করে নোঙ্গর নির্বাচন করুন, স্টেরিক বাধার পরীক্ষার জন্য বাঁয়ের গ্রুপটি টেনে দেখুন, অথবা ৩ডি রিয়ালিটি চালু করুন!',
         },
         chemicalPrinciple: {
-          en: 'Rule: 1 Swap = Enantiomer (Inversion). 3-Group Rotation = Identical Homomer.',
-          bn: 'সূত্র: ১টি অদলবদল = এন্যানশিওমার। ৩-গ্রুপ ঘূর্ণন = অভিন্ন হোমোমার।',
+          en: 'Rotation = Tumbling in Space (Same Molecule). Swapping = Breaking Bonds (Enantiomer).',
+          bn: 'ঘূর্ণন = মহাশূন্যে সমাবর্তন (একই অণু)। অদলবদল = বন্ধন ভাঙন (এন্যানশিওমার)।',
         },
       };
     }
-  }, [activeMode, currentStep, groups]);
+  }, [activeMode, currentStep, groups, anchorPosition]);
 
-  // =========================================================================
-  // DYNAMIC 2D COORDINATE ENGINE FOR GROUPS UNDER ANIMATION
-  // Calculates precise (x, y) coordinates for each of the 4 groups at animProgress p
-  // =========================================================================
+  // Dynamic coordinate engine for groups
   const groupPositions = useMemo(() => {
     const p = animProgress;
-
-    // Default static slot positions
-    const pos = {
-      top: { x: CENTER_X, y: CENTER_Y - RADIUS },
-      bottom: { x: CENTER_X, y: CENTER_Y + RADIUS },
-      left: { x: CENTER_X - RADIUS, y: CENTER_Y },
-      right: { x: CENTER_X + RADIUS, y: CENTER_Y },
-    };
+    const pos = { ...STATIC_POSITIONS };
 
     if (activeMode === 'saw') {
-      // CHEMICAL SAW / HORIZONTAL BOND BREAKING & CROSSOVER
-      // Left and Right detach, arc across, and snap
-      const leftStartX = CENTER_X - RADIUS;
-      const rightStartX = CENTER_X + RADIUS;
+      const leftStartX = STATIC_POSITIONS.left.x;
+      const rightStartX = STATIC_POSITIONS.right.x;
 
       if (p <= 0.25) {
-        // Phase 1: Detachment (pulling outward slightly)
-        const det = (p / 0.25) * 18;
+        const det = (p / 0.25) * 20;
         pos.left = { x: leftStartX - det, y: CENTER_Y };
         pos.right = { x: rightStartX + det, y: CENTER_Y };
       } else if (p <= 0.8) {
-        // Phase 2: Crossover in mid-air
         const u = (p - 0.25) / 0.55;
-        // Right moves to left, arcing UPWARD above center
-        const rightX = (rightStartX + 18) - (rightStartX - leftStartX + 36) * u;
-        const rightY = CENTER_Y - Math.sin(u * Math.PI) * 48;
-
-        // Left moves to right, arcing DOWNWARD below center
-        const leftX = (leftStartX - 18) + (rightStartX - leftStartX + 36) * u;
-        const leftY = CENTER_Y + Math.sin(u * Math.PI) * 48;
+        const rightX = (rightStartX + 20) - (rightStartX - leftStartX + 40) * u;
+        const rightY = CENTER_Y - Math.sin(u * Math.PI) * 52;
+        const leftX = (leftStartX - 20) + (rightStartX - leftStartX + 40) * u;
+        const leftY = CENTER_Y + Math.sin(u * Math.PI) * 52;
 
         pos.right = { x: rightX, y: rightY };
         pos.left = { x: leftX, y: leftY };
       } else {
-        // Phase 3: Snap into opposite slots
         const v = (p - 0.8) / 0.2;
-        const snap = (1 - v) * 12;
+        const snap = (1 - v) * 14;
         pos.right = { x: leftStartX - snap, y: CENTER_Y };
         pos.left = { x: rightStartX + snap, y: CENTER_Y };
       }
     } else if (activeMode === 'propeller') {
-      // PROPELLER SPIN (Counter-Clockwise rotation of bottom 3 groups)
-      // Top group stays locked at (CENTER_X, CENTER_Y - RADIUS)
-      // Right (angle 0) moves towards Left (angle PI) via bottom/center arc
-      // Left (angle PI) moves to Bottom (angle PI/2)
-      // Bottom (angle PI/2) moves to Right (angle 0)
+      pos[anchorPosition] = STATIC_POSITIONS[anchorPosition];
 
-      // Group starting at Left -> moves to Bottom
-      const angleLeft = Math.PI - (Math.PI / 2) * p;
-      pos.left = {
-        x: CENTER_X + RADIUS * Math.cos(angleLeft),
-        y: CENTER_Y + RADIUS * Math.sin(angleLeft),
-      };
-
-      // Group starting at Bottom -> moves to Right
-      const angleBottom = Math.PI / 2 - (Math.PI / 2) * p;
-      pos.bottom = {
-        x: CENTER_X + RADIUS * Math.cos(angleBottom),
-        y: CENTER_Y + RADIUS * Math.sin(angleBottom),
-      };
-
-      // Group starting at Right -> sweeps across to Left
-      // Arcs smoothly across with a slight dip below the central stereocenter
-      const rx = (CENTER_X + RADIUS) - 2 * RADIUS * p;
-      const ry = CENTER_Y + Math.sin(p * Math.PI) * 36;
-      pos.right = { x: rx, y: ry };
+      const unanchored = getUnanchoredPositions(anchorPosition);
+      unanchored.forEach((fromPos) => {
+        const toPos = getPropellerTargetPos(fromPos, anchorPosition);
+        pos[fromPos] = interpolateTrajectory(fromPos, toPos, p, anchorPosition);
+      });
     }
 
     return pos;
-  }, [activeMode, animProgress]);
+  }, [activeMode, animProgress, anchorPosition]);
 
   return (
     <div className="flex flex-col w-full h-full bg-[#040d1a] text-slate-100 p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-6">
@@ -716,22 +936,22 @@ export const ChiralLockLab: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
               <Sparkles className="h-3 w-3" />
-              <span>THE CHIRAL LOCK</span>
+              <span>THE CHIRAL LOCK 2.0</span>
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              Step-by-Step Fischer Dynamics & CIP Preservation
+              Tetrahedral Blockade & Multi-Anchor Dynamics
             </span>
           </div>
           <h2 className="text-lg sm:text-xl font-black text-white mt-1">
             <BilingualText
-              en="Stereocenter 'Physical Lock' Simulator"
-              bn="স্টেরিওসেন্টার 'ফিজিক্যাল লক' সিমুলেটর"
+              en="Chiral Center 'Physical Lock' & Tetrahedral Reality"
+              bn="কাইরাল কেন্দ্র 'ফিজিক্যাল লক' ও চতুস্তলকীয় বাস্তবতা"
             />
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             <BilingualText
-              en="Step-by-step visual proof: Single bond rotation preserves chirality, while bond breaking inverts it."
-              bn="ধাপে ধাপে দৃশ্যমান প্রমাণ: একক বন্ধন ঘূর্ণন কাইরালিটি সংরক্ষণ করে, যেখানে বন্ধন ভাঙন এটিকে উল্টে দেয়।"
+              en="Visual proof: Why rotating single bonds preserves (R)/(S), why 2D sliding is physically blocked, and why 90° flips are invalid."
+              bn="দৃশ্যমান প্রমাণ: কেন একক বন্ধন ঘূর্ণন (R)/(S) সংরক্ষণ করে, কেন ২ডি স্লাইড বাধাপ্রাপ্ত হয় এবং কেন ৯০° ঘূর্ণন অবৈধ।"
             />
           </p>
         </div>
@@ -769,37 +989,94 @@ export const ChiralLockLab: React.FC = () => {
         </div>
       </div>
 
-      {/* Golden Rule Banner */}
-      <div className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs font-semibold shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <Zap className="h-4 w-4 text-amber-400 shrink-0" />
-          <span>
-            <strong>
-              <BilingualText en="Fundamental Stereochemistry Rule:" bn="মৌলিক স্টেরিওরসায়নের নিয়ম:" />
-            </strong>{' '}
-            <span className="font-mono text-amber-300">
-              <BilingualText
-                en="1 Bond Swap = Enantiomer (Inversion). 3-Group Rotation = Identical Homomer."
-                bn="১টি বন্ধন অদলবদল = এন্যানশিওমার। ৩-গ্রুপ ঘূর্ণন = অভিন্ন হোমোমার।"
-              />
-            </span>
+      {/* NEW FEATURE 5: DYNAMIC SUMMARY & ACTION LEDGER BOX */}
+      <div className="w-full p-4 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-950 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div
+              className={`p-2 rounded-xl border shrink-0 ${
+                lastActionSummary.type === 'rotation' || lastActionSummary.type === 'flip180'
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                  : lastActionSummary.type === 'swap'
+                  ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                  : lastActionSummary.type === 'flip90' || lastActionSummary.type === 'crash'
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                  : 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
+              }`}
+            >
+              {lastActionSummary.type === 'rotation' ? (
+                <RotateCcw className="h-5 w-5 animate-spin-slow" />
+              ) : lastActionSummary.type === 'swap' ? (
+                <Scissors className="h-5 w-5" />
+              ) : lastActionSummary.type === 'crash' ? (
+                <AlertTriangle className="h-5 w-5 animate-bounce" />
+              ) : lastActionSummary.type === 'flip90' ? (
+                <ShieldAlert className="h-5 w-5 text-rose-400" />
+              ) : (
+                <Zap className="h-5 w-5" />
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  Core Axiom
+                </span>
+                <span className="text-xs font-mono font-bold text-cyan-300">
+                  <BilingualText
+                    en={lastActionSummary.title.en}
+                    bn={lastActionSummary.title.bn}
+                  />
+                </span>
+              </div>
+
+              <div className="mt-1 text-sm font-black text-white tracking-wide">
+                <BilingualText
+                  en={lastActionSummary.ruleText.en}
+                  bn={lastActionSummary.ruleText.bn}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {/* View Mode Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShow3DReality(!show3DReality)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer shadow-sm ${
+                show3DReality
+                  ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                  : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:border-slate-600'
+              }`}
+            >
+              <Box className="h-3.5 w-3.5" />
+              <span>{show3DReality ? '3D Reality (ON)' : 'Show 3D Reality'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Persistent Tooltip Bar */}
+        <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+          <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>Fischer Rule: Horizontal bonds ALWAYS point towards you to be a valid view.</span>
+          </span>
+          <span className="hidden md:inline text-slate-500">
+            Tetrahedral angle: 109.5° • SO(3) continuous symmetry
           </span>
         </div>
-        <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-400/20 text-amber-200 border border-amber-400/30 shrink-0 hidden sm:inline">
-          Board & NEET Exam Essential
-        </span>
       </div>
 
       {/* Main Grid: Interactive Stage (Left) + Stereocenter Status Panel (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6 items-start">
         {/* ============================================================== */}
         {/* LEFT COLUMN: INTERACTIVE FISCHER PROJECTION ANIMATION STAGE     */}
         {/* ============================================================== */}
         <div className="flex flex-col items-center bg-slate-900/80 border border-slate-800 rounded-3xl p-4 sm:p-6 backdrop-blur-md relative overflow-hidden shadow-2xl space-y-4">
-          {/* Subtle Circuit Background */}
           <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-25 pointer-events-none" />
 
-          {/* STEP NARRATIVE CARD (Live Explanation for Current Frame) */}
+          {/* STEP NARRATIVE CARD */}
           <div className="w-full p-4 rounded-2xl border border-slate-700 bg-slate-950/70 shadow-lg relative z-10">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -836,34 +1113,103 @@ export const ChiralLockLab: React.FC = () => {
             </div>
           </div>
 
-          {/* STEP TABS: [Step 1] [Step 2] [Step 3] [Step 4] */}
-          <div className="grid grid-cols-4 gap-1.5 w-full relative z-10">
-            {[1, 2, 3, 4].map((stepNum) => (
-              <button
-                key={stepNum}
-                type="button"
-                onClick={() => jumpToStep(stepNum)}
-                className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer border text-center ${
-                  currentStep === stepNum
-                    ? 'border-cyan-400 bg-cyan-500/25 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
-                    : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-white hover:border-slate-700'
-                }`}
-              >
-                Step {stepNum}
-              </button>
-            ))}
+          {/* MULTI-ANCHOR SELECTOR PILLS */}
+          <div className="w-full flex items-center justify-between p-2 rounded-xl bg-slate-950/50 border border-slate-800/80 text-xs relative z-10">
+            <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400 font-bold">
+              <Lock className="h-3 w-3 text-amber-400" />
+              <span>Click Any Group to Anchor:</span>
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              {(['top', 'bottom', 'left', 'right'] as Position[]).map((pos) => {
+                const grp = groups[pos];
+                const isSelected = anchorPosition === pos;
+                return (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => {
+                      if (isPlaying) return;
+                      setAnchorPosition(pos);
+                    }}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'border-amber-400 bg-amber-500/25 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
+                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    {isSelected ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5 opacity-60" />}
+                    <span>{grp.formula}</span>
+                    <span className="text-[9px] opacity-70">({pos[0].toUpperCase()})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ============================================================== */}
-          {/* CENTRAL 2D FISCHER PROJECTION ANIMATION BOARD                 */}
-          {/* ============================================================== */}
-          <div className="relative w-[340px] h-[340px] flex items-center justify-center my-2 select-none overflow-visible">
-            {/* 180° In-Plane Whole Molecule Rotation Wrapper */}
+          {/* CENTRAL FISCHER PROJECTION ANIMATION BOARD */}
+          <div
+            className={`relative w-[360px] h-[360px] flex items-center justify-center my-1 select-none overflow-visible rounded-3xl transition-all duration-500 ${
+              isInvalid90View
+                ? 'border-2 border-rose-500/90 bg-rose-950/20 shadow-[0_0_35px_rgba(244,63,94,0.35)]'
+                : wholeMoleculeRotation % 180 === 0 && wholeMoleculeRotation > 0
+                ? 'border border-emerald-500/60 bg-emerald-950/15 shadow-[0_0_25px_rgba(16,185,129,0.25)]'
+                : 'border border-slate-800/80 bg-slate-950/40'
+            }`}
+          >
+            {/* INVALID 90° WARNING OVERLAY BANNER */}
+            <AnimatePresence>
+              {isInvalid90View && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute top-2 z-40 px-3 py-1.5 rounded-xl bg-rose-900/90 border border-rose-400 text-rose-100 text-[11px] font-bold shadow-xl flex items-center gap-1.5 backdrop-blur-md animate-pulse"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 text-rose-300" />
+                  <span>Invalid Fischer View! The wedged bonds are now vertical.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* STERIC CRASH COLLISION BANNER & MODAL */}
+            <AnimatePresence>
+              {isCrashing && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  className="absolute z-50 p-4 rounded-2xl bg-slate-950/95 border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.65)] text-center backdrop-blur-xl max-w-[280px]"
+                >
+                  <div className="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/50 mb-2">
+                    <Flame className="h-5 w-5 animate-bounce" />
+                  </div>
+                  <h5 className="font-bold text-rose-300 text-xs uppercase tracking-wider">
+                    Physical Blockade!
+                  </h5>
+                  <p className="text-[11px] text-slate-200 mt-1 font-semibold leading-snug">
+                    {crashMessage}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">
+                    In real 3D space, atoms cannot pass through each other in 2D. Click <strong>"Chemical Saw / Swap Groups"</strong> to cleave covalent bonds!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsCrashing(false)}
+                    className="mt-3 px-3 py-1 rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-rose-200 border border-rose-400/50 text-[10px] font-bold cursor-pointer transition-colors"
+                  >
+                    Understood
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* In-Plane Whole Molecule Rotation Wrapper */}
             <div
               style={{
-                transform: `rotate(${totalRotationDeg + (activeMode === 'flip180' ? animProgress * 180 : 0)}deg)`,
-                transformOrigin: '170px 170px',
-                transition: activeMode === 'flip180' ? 'none' : 'transform 0.4s ease-out',
+                transform: `rotate(${wholeMoleculeRotation + (activeMode === 'flip180' ? animProgress * 180 : 0)}deg)`,
+                transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                transition: activeMode === 'flip180' ? 'none' : 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 width: CANVAS_SIZE,
                 height: CANVAS_SIZE,
               }}
@@ -876,88 +1222,157 @@ export const ChiralLockLab: React.FC = () => {
                 className="absolute inset-0 pointer-events-none overflow-visible"
               >
                 <defs>
-                  {/* Glowing Filter for Chemical Bond Cleavage Sparks */}
                   <filter id="laser-glow" x="-30%" y="-30%" width="160%" height="160%">
                     <feGaussianBlur stdDeviation="4" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                   </filter>
+
+                  <linearGradient id="wedge-left-grad" x1="100%" y1="0%" x2="0%" y2="0%">
+                    <stop offset="0%" stopColor="#0891b2" />
+                    <stop offset="50%" stopColor="#06b6d4" />
+                    <stop offset="100%" stopColor="#38bdf8" />
+                  </linearGradient>
+                  <linearGradient id="wedge-right-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#0891b2" />
+                    <stop offset="50%" stopColor="#06b6d4" />
+                    <stop offset="100%" stopColor="#38bdf8" />
+                  </linearGradient>
                 </defs>
 
-                {/* Vertical Bond Line (Center to Top & Bottom) */}
-                {/* Dashes represent bonds going away behind plane */}
-                <line
-                  x1={CENTER_X}
-                  y1={CENTER_Y - RADIUS + 15}
-                  x2={CENTER_X}
-                  y2={CENTER_Y + RADIUS - 15}
-                  stroke="#475569"
-                  strokeWidth="5"
-                  strokeDasharray="6 4"
-                  strokeLinecap="round"
-                />
-
-                {/* Horizontal Bond Line (Center to Left & Right) */}
-                {/* Solid cyan wedges representing bonds coming forward */}
-                {activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.85 ? (
-                  // Severed Horizontal Bonds with Broken Fracture Stubs!
-                  <g filter="url(#laser-glow)">
-                    {/* Left Broken Stub */}
-                    <line
-                      x1={CENTER_X}
-                      y1={CENTER_Y}
-                      x2={CENTER_X - 42}
-                      y2={CENTER_Y}
-                      stroke="#f43f5e"
-                      strokeWidth="5"
-                      strokeLinecap="round"
-                    />
-                    {/* Right Broken Stub */}
-                    <line
-                      x1={CENTER_X}
-                      y1={CENTER_Y}
-                      x2={CENTER_X + 42}
-                      y2={CENTER_Y}
-                      stroke="#f43f5e"
-                      strokeWidth="5"
-                      strokeLinecap="round"
-                    />
-                    {/* Laser Cleaver Sparks / Fracture Burst at Center */}
-                    <circle cx={CENTER_X - 42} cy={CENTER_Y} r="5" fill="#f43f5e" />
-                    <circle cx={CENTER_X + 42} cy={CENTER_Y} r="5" fill="#f43f5e" />
-                    <line
-                      x1={CENTER_X - 50}
-                      y1={CENTER_Y - 14}
-                      x2={CENTER_X - 35}
-                      y2={CENTER_Y + 14}
-                      stroke="#fb7185"
-                      strokeWidth="3"
-                    />
-                    <line
-                      x1={CENTER_X + 35}
-                      y1={CENTER_Y - 14}
-                      x2={CENTER_X + 50}
-                      y2={CENTER_Y + 14}
-                      stroke="#fb7185"
-                      strokeWidth="3"
-                    />
-                  </g>
-                ) : (
-                  // Intact Solid Horizontal Bond
-                  <line
-                    x1={CENTER_X - RADIUS + 15}
-                    y1={CENTER_Y}
-                    x2={CENTER_X + RADIUS - 15}
-                    y2={CENTER_Y}
-                    stroke={activeMode === 'saw' ? '#f43f5e' : '#38bdf8'}
-                    strokeWidth={activeMode === 'saw' ? '6' : '5'}
-                    strokeLinecap="round"
-                    className="transition-colors duration-300"
+                {/* Steric Crash Red Shockwave */}
+                {isCrashing && (
+                  <circle
+                    cx={CENTER_X}
+                    cy={CENTER_Y}
+                    r={55}
+                    fill="none"
+                    stroke="#f43f5e"
+                    strokeWidth="4"
+                    strokeDasharray="4 2"
+                    className="animate-ping opacity-80"
                   />
                 )}
 
-                {/* PROPELLER ROTATION CIRCULAR ORBIT TRACE */}
+                {/* VERTICAL BONDS */}
+                {show3DReality ? (
+                  <g className="opacity-90">
+                    {[18, 32, 46, 60, 74, 88].map((dist, idx) => {
+                      const barWidth = 24 - idx * 2.8;
+                      const yPos = CENTER_Y - dist;
+                      return (
+                        <line
+                          key={`top-dash-${dist}`}
+                          x1={CENTER_X - barWidth / 2}
+                          y1={yPos}
+                          x2={CENTER_X + barWidth / 2}
+                          y2={yPos}
+                          stroke="#64748b"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                        />
+                      );
+                    })}
+                    {[18, 32, 46, 60, 74, 88].map((dist, idx) => {
+                      const barWidth = 24 - idx * 2.8;
+                      const yPos = CENTER_Y + dist;
+                      return (
+                        <line
+                          key={`bottom-dash-${dist}`}
+                          x1={CENTER_X - barWidth / 2}
+                          y1={yPos}
+                          x2={CENTER_X + barWidth / 2}
+                          y2={yPos}
+                          stroke="#64748b"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                        />
+                      );
+                    })}
+                  </g>
+                ) : (
+                  <line
+                    x1={CENTER_X}
+                    y1={CENTER_Y - RADIUS + 18}
+                    x2={CENTER_X}
+                    y2={CENTER_Y + RADIUS - 18}
+                    stroke="#64748b"
+                    strokeWidth="5"
+                    strokeDasharray="6 4"
+                    strokeLinecap="round"
+                  />
+                )}
+
+                {/* HORIZONTAL BONDS */}
+                {activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.85 ? (
+                  <g filter="url(#laser-glow)">
+                    <line
+                      x1={CENTER_X}
+                      y1={CENTER_Y}
+                      x2={CENTER_X - 44}
+                      y2={CENTER_Y}
+                      stroke="#f43f5e"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                    />
+                    <line
+                      x1={CENTER_X}
+                      y1={CENTER_Y}
+                      x2={CENTER_X + 44}
+                      y2={CENTER_Y}
+                      stroke="#f43f5e"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                    />
+                    <circle cx={CENTER_X - 44} cy={CENTER_Y} r="6" fill="#f43f5e" />
+                    <circle cx={CENTER_X + 44} cy={CENTER_Y} r="6" fill="#f43f5e" />
+                    <line x1={CENTER_X - 52} y1={CENTER_Y - 14} x2={CENTER_X - 36} y2={CENTER_Y + 14} stroke="#fda4af" strokeWidth="3" />
+                    <line x1={CENTER_X + 36} y1={CENTER_Y - 14} x2={CENTER_X + 52} y2={CENTER_Y + 14} stroke="#fda4af" strokeWidth="3" />
+                  </g>
+                ) : show3DReality ? (
+                  <g>
+                    <polygon
+                      points={`${CENTER_X - 14},${CENTER_Y - 4} ${CENTER_X - RADIUS + 20},${CENTER_Y - 15} ${CENTER_X - RADIUS + 20},${CENTER_Y + 15} ${CENTER_X - 14},${CENTER_Y + 4}`}
+                      fill="url(#wedge-left-grad)"
+                      filter="drop-shadow(0 6px 12px rgba(6,182,212,0.45))"
+                    />
+                    <line
+                      x1={CENTER_X - 14}
+                      y1={CENTER_Y - 4}
+                      x2={CENTER_X - RADIUS + 20}
+                      y2={CENTER_Y - 15}
+                      stroke="#e0f2fe"
+                      strokeWidth="2"
+                    />
+
+                    <polygon
+                      points={`${CENTER_X + 14},${CENTER_Y - 4} ${CENTER_X + RADIUS - 20},${CENTER_Y - 15} ${CENTER_X + RADIUS - 20},${CENTER_Y + 15} ${CENTER_X + 14},${CENTER_Y + 4}`}
+                      fill="url(#wedge-right-grad)"
+                      filter="drop-shadow(0 6px 12px rgba(6,182,212,0.45))"
+                    />
+                    <line
+                      x1={CENTER_X + 14}
+                      y1={CENTER_Y - 4}
+                      x2={CENTER_X + RADIUS - 20}
+                      y2={CENTER_Y - 15}
+                      stroke="#e0f2fe"
+                      strokeWidth="2"
+                    />
+                  </g>
+                ) : (
+                  <line
+                    x1={CENTER_X - RADIUS + 18}
+                    y1={CENTER_Y}
+                    x2={CENTER_X + RADIUS - 18}
+                    y2={CENTER_Y}
+                    stroke="#38bdf8"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                )}
+
+                {/* MULTI-ANCHOR ROTATION CIRCULAR ORBIT TRACE */}
                 {activeMode === 'propeller' && (
-                  <g className="opacity-70">
+                  <g className="opacity-75">
                     <circle
                       cx={CENTER_X}
                       cy={CENTER_Y}
@@ -967,23 +1382,14 @@ export const ChiralLockLab: React.FC = () => {
                       strokeWidth="2.5"
                       strokeDasharray="6 4"
                     />
-                    {/* Directional Curved Arrows */}
-                    <path
-                      d={`M ${CENTER_X - RADIUS + 10} ${CENTER_Y + 40} A ${RADIUS} ${RADIUS} 0 0 1 ${CENTER_X + RADIUS - 10} ${CENTER_Y + 40}`}
-                      fill="none"
-                      stroke="#a855f7"
-                      strokeWidth="2"
-                    />
                   </g>
                 )}
 
                 {/* CHEMICAL SAW CROSSOVER FLIGHT PATH ARCS */}
                 {activeMode === 'saw' && animProgress > 0.1 && (
-                  <g className="opacity-40" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 3" fill="none">
-                    {/* Top Arc for Right Group */}
-                    <path d={`M ${CENTER_X + RADIUS} ${CENTER_Y} Q ${CENTER_X} ${CENTER_Y - 60} ${CENTER_X - RADIUS} ${CENTER_Y}`} />
-                    {/* Bottom Arc for Left Group */}
-                    <path d={`M ${CENTER_X - RADIUS} ${CENTER_Y} Q ${CENTER_X} ${CENTER_Y + 60} ${CENTER_X + RADIUS} ${CENTER_Y}`} />
+                  <g className="opacity-50" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="5 3" fill="none">
+                    <path d={`M ${CENTER_X + RADIUS} ${CENTER_Y} Q ${CENTER_X} ${CENTER_Y - 65} ${CENTER_X - RADIUS} ${CENTER_Y}`} />
+                    <path d={`M ${CENTER_X - RADIUS} ${CENTER_Y} Q ${CENTER_X} ${CENTER_Y + 65} ${CENTER_X + RADIUS} ${CENTER_Y}`} />
                   </g>
                 )}
               </svg>
@@ -993,55 +1399,94 @@ export const ChiralLockLab: React.FC = () => {
                 className="absolute z-20 flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2"
                 style={{ left: CENTER_X, top: CENTER_Y }}
               >
-                <div className="relative flex items-center justify-center w-12 h-12 rounded-full bg-slate-900 border-2 border-purple-500 shadow-[0_0_24px_rgba(168,85,247,0.45)]">
+                <div
+                  className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
+                    isCrashing
+                      ? 'bg-rose-950 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.8)] scale-110'
+                      : 'bg-slate-900 border-purple-500 shadow-[0_0_24px_rgba(168,85,247,0.45)]'
+                  }`}
+                >
                   <span className="font-mono font-black text-sm text-purple-300">C*</span>
                   <span className="absolute -inset-1 rounded-full border border-purple-400/40 animate-ping opacity-30 pointer-events-none" />
                 </div>
                 <span className="text-[9px] font-mono font-bold text-purple-400 mt-0.5 tracking-wider">
                   Stereocenter
                 </span>
+                {show3DReality && (
+                  <span className="text-[8px] font-mono text-cyan-300/80 -mt-0.5">
+                    sp³ 109.5°
+                  </span>
+                )}
               </div>
 
-              {/* TOP GROUP: Locked Pivot */}
+              {/* TOP GROUP */}
               <div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                 style={{ left: groupPositions.top.x, top: groupPositions.top.y }}
+                onClick={() => !isPlaying && setAnchorPosition('top')}
               >
-                <div
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 transition-all ${
-                    activeMode === 'propeller'
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)] animate-pulse'
-                      : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-                  }`}
-                >
-                  <Lock className="h-2.5 w-2.5" />
-                  <span>{activeMode === 'propeller' ? 'Locked Pivot' : 'Top Pivot'}</span>
-                </div>
-                <GroupPill group={groups.top} />
+                <AnchorBadge isAnchor={anchorPosition === 'top'} activeMode={activeMode} />
+                <GroupPill group={groups.top} isAnchor={anchorPosition === 'top'} />
               </div>
 
               {/* BOTTOM GROUP */}
               <div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                 style={{ left: groupPositions.bottom.x, top: groupPositions.bottom.y }}
+                onClick={() => !isPlaying && setAnchorPosition('bottom')}
               >
-                <GroupPill group={groups.bottom} />
+                <AnchorBadge isAnchor={anchorPosition === 'bottom'} activeMode={activeMode} />
+                <GroupPill group={groups.bottom} isAnchor={anchorPosition === 'bottom'} />
               </div>
 
-              {/* LEFT GROUP */}
-              <div
-                className="absolute z-30 flex items-center -translate-x-1/2 -translate-y-1/2"
+              {/* LEFT GROUP (Draggable to demonstrate the Illegal Slide / Physical Blockade) */}
+              <motion.div
+                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
                 style={{ left: groupPositions.left.x, top: groupPositions.left.y }}
+                onClick={() => !isPlaying && setAnchorPosition('left')}
+                drag={activeMode === 'idle' && !isCrashing}
+                dragConstraints={{ left: 0, right: 190, top: -30, bottom: 30 }}
+                dragElastic={0.2}
+                dragSnapToOrigin={true}
+                onDrag={(_e, info) => {
+                  if (info.offset.x > 65 && !isCrashing && activeMode === 'idle') {
+                    triggerStericCrash();
+                  }
+                }}
+                onDragEnd={(_e, info) => {
+                  if (info.offset.x > 50 && !isCrashing && activeMode === 'idle') {
+                    triggerStericCrash();
+                  }
+                }}
               >
-                <GroupPill group={groups.left} isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8} />
-              </div>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <AnchorBadge isAnchor={anchorPosition === 'left'} activeMode={activeMode} />
+                  {activeMode === 'idle' && (
+                    <span className="flex items-center gap-0.5 px-1 py-0.2 rounded text-[7.5px] font-mono text-cyan-300/80 bg-cyan-950/60 border border-cyan-800/40">
+                      <Move className="h-2 w-2" />
+                      <span>Drag Me</span>
+                    </span>
+                  )}
+                </div>
+                <GroupPill
+                  group={groups.left}
+                  isAnchor={anchorPosition === 'left'}
+                  isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                />
+              </motion.div>
 
               {/* RIGHT GROUP */}
               <div
-                className="absolute z-30 flex items-center -translate-x-1/2 -translate-y-1/2"
+                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                 style={{ left: groupPositions.right.x, top: groupPositions.right.y }}
+                onClick={() => !isPlaying && setAnchorPosition('right')}
               >
-                <GroupPill group={groups.right} isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8} />
+                <AnchorBadge isAnchor={anchorPosition === 'right'} activeMode={activeMode} />
+                <GroupPill
+                  group={groups.right}
+                  isAnchor={anchorPosition === 'right'}
+                  isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                />
               </div>
             </div>
           </div>
@@ -1051,12 +1496,11 @@ export const ChiralLockLab: React.FC = () => {
             <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Sliders className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Animation Progress Scrub:</span>
+                <span>Animation Scrub:</span>
               </span>
               <span className="text-cyan-300 font-bold">{Math.round(animProgress * 100)}%</span>
             </div>
 
-            {/* Range Scrubber Track */}
             <input
               type="range"
               min="0"
@@ -1071,7 +1515,6 @@ export const ChiralLockLab: React.FC = () => {
               className="w-full accent-cyan-400 cursor-pointer"
             />
 
-            {/* Play, Pause & Step Buttons */}
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
@@ -1111,10 +1554,10 @@ export const ChiralLockLab: React.FC = () => {
           </div>
 
           {/* ============================================================== */}
-          {/* THREE MAIN INTERACTIVE ACTION BUTTONS                          */}
+          {/* INTERACTION ACTION BUTTONS                                      */}
           {/* ============================================================== */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full relative z-10 pt-1">
-            {/* Interaction 1: Propeller Spin */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 w-full relative z-10 pt-1">
+            {/* Interaction 1: Multi-Anchor Propeller Spin */}
             <button
               type="button"
               onClick={() => startInteraction('propeller')}
@@ -1124,18 +1567,16 @@ export const ChiralLockLab: React.FC = () => {
                   : 'border-purple-500/40 bg-gradient-to-b from-purple-950/40 to-slate-900 text-purple-200 hover:border-purple-400'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-bold text-xs text-purple-300 group-hover:text-purple-200">
-                <RotateCcw className="h-4 w-4 text-purple-400 group-hover:-rotate-90 transition-transform duration-300" />
-                <span>
-                  <BilingualText en="Rotate Single Bonds" bn="একক বন্ধন আবর্তন" />
-                </span>
+              <div className="flex items-center gap-1 font-bold text-xs text-purple-300 group-hover:text-purple-200">
+                <RotateCcw className="h-3.5 w-3.5 text-purple-400 group-hover:-rotate-90 transition-transform duration-300" />
+                <span>Spin Remaining Groups</span>
               </div>
-              <span className="text-[10px] text-purple-300/80 font-mono mt-1">
-                (Hold Top Group)
+              <span className="text-[10px] text-amber-300 font-mono mt-1 font-semibold">
+                (Hold {groups[anchorPosition].formula} Anchor)
               </span>
-              <span className="text-[9px] text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+              <span className="text-[8.5px] text-emerald-400 mt-0.5 font-semibold flex items-center gap-0.5">
                 <CheckCircle2 className="h-2.5 w-2.5" />
-                <span>0 Bonds Broken • Identical</span>
+                <span>0 Bonds Cleaved • Identical</span>
               </span>
             </button>
 
@@ -1149,41 +1590,56 @@ export const ChiralLockLab: React.FC = () => {
                   : 'border-rose-500/40 bg-gradient-to-b from-rose-950/40 to-slate-900 text-rose-200 hover:border-rose-400'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-bold text-xs text-rose-300 group-hover:text-rose-200">
-                <Scissors className="h-4 w-4 text-rose-400 group-hover:scale-110 transition-transform duration-300" />
-                <span>
-                  <BilingualText en="Swap Horizontal Groups" bn="অনুভূমিক গ্রুপ অদলবদল" />
-                </span>
+              <div className="flex items-center gap-1 font-bold text-xs text-rose-300 group-hover:text-rose-200">
+                <Scissors className="h-3.5 w-3.5 text-rose-400 group-hover:scale-110 transition-transform duration-300" />
+                <span>Chemical Saw / Swap</span>
               </div>
-              <span className="text-[10px] text-rose-300/80 font-mono mt-1">
-                (Break Bonds)
+              <span className="text-[10px] text-rose-300/80 font-mono mt-1 font-semibold">
+                (Break Horizontal Bonds)
               </span>
-              <span className="text-[9px] text-rose-400 mt-1 font-semibold flex items-center gap-1">
+              <span className="text-[8.5px] text-rose-400 mt-0.5 font-semibold flex items-center gap-0.5">
                 <Zap className="h-2.5 w-2.5" />
-                <span>2 Bonds Broken • Enantiomer</span>
+                <span>2 Bonds Cleaved • Enantiomer</span>
               </span>
             </button>
 
-            {/* Interaction 3: 180° Plane Flip */}
+            {/* Interaction 3: Rotate Whole Molecule 90° (Demonstrating Invalid View) */}
             <button
               type="button"
-              onClick={() => startInteraction('flip180')}
+              onClick={handleRotate90}
+              className="flex flex-col items-center justify-center text-center p-3 rounded-2xl border border-amber-500/40 bg-gradient-to-b from-amber-950/40 to-slate-900 text-amber-200 hover:border-amber-400 transition-all cursor-pointer shadow-lg group"
+            >
+              <div className="flex items-center gap-1 font-bold text-xs text-amber-300 group-hover:text-amber-200">
+                <RotateCw className="h-3.5 w-3.5 text-amber-400 group-hover:rotate-90 transition-transform duration-300" />
+                <span>Rotate Molecule 90°</span>
+              </div>
+              <span className="text-[10px] text-amber-300/80 font-mono mt-1">
+                (Paper Turn)
+              </span>
+              <span className="text-[8.5px] text-amber-400 mt-0.5 font-semibold flex items-center gap-0.5">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                <span>Invalid Fischer View!</span>
+              </span>
+            </button>
+
+            {/* Interaction 4: Rotate Whole Molecule 180° (Valid Homomer) */}
+            <button
+              type="button"
+              onClick={handleRotate180}
               className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border transition-all cursor-pointer shadow-lg group ${
                 activeMode === 'flip180'
                   ? 'border-cyan-400 bg-cyan-900/40 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
                   : 'border-cyan-500/40 bg-gradient-to-b from-cyan-950/40 to-slate-900 text-cyan-200 hover:border-cyan-400'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-bold text-xs text-cyan-300 group-hover:text-cyan-200">
-                <RotateCw className="h-4 w-4 text-cyan-400 group-hover:rotate-180 transition-transform duration-500" />
-                <span>
-                  <BilingualText en="Rotate Entire Molecule 180°" bn="পুরো অণু ১৮০° ঘোরান" />
-                </span>
+              <div className="flex items-center gap-1 font-bold text-xs text-cyan-300 group-hover:text-cyan-200">
+                <RotateCw className="h-3.5 w-3.5 text-cyan-400 group-hover:rotate-180 transition-transform duration-500" />
+                <span>Rotate Molecule 180°</span>
               </div>
               <span className="text-[10px] text-cyan-300/80 font-mono mt-1">
                 (In-Plane Flip)
               </span>
-              <span className="text-[9px] text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+              <span className="text-[8.5px] text-emerald-400 mt-0.5 font-semibold flex items-center gap-0.5">
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 <span>Allowed Flip • Identical</span>
               </span>
@@ -1348,12 +1804,18 @@ export const ChiralLockLab: React.FC = () => {
 
               <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
                 <div className="text-[10px] text-slate-400 font-semibold uppercase">
-                  180° Flips
+                  Orientation
                 </div>
                 <div className="text-lg font-mono font-black text-cyan-400 mt-0.5">
-                  {flips180Count}
+                  {wholeMoleculeRotation}°
                 </div>
-                <div className="text-[9px] text-emerald-400 font-mono">Identical</div>
+                <div
+                  className={`text-[9px] font-mono ${
+                    isInvalid90View ? 'text-rose-400 font-bold' : 'text-emerald-400'
+                  }`}
+                >
+                  {isInvalid90View ? 'Invalid' : 'Valid View'}
+                </div>
               </div>
             </div>
           </div>
@@ -1364,7 +1826,6 @@ export const ChiralLockLab: React.FC = () => {
       {/* PEDAGOGICAL MASTERCLASS: WHY ROTATION ≠ BOND BREAKING          */}
       {/* ============================================================== */}
       <div className="w-full mt-8 p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md space-y-8">
-        {/* Masterclass Header */}
         <div className="border-b border-slate-800 pb-5">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
@@ -1389,7 +1850,7 @@ export const ChiralLockLab: React.FC = () => {
           </p>
         </div>
 
-        {/* 3 Core Conceptual Pillars (Cards with Visual Demonstrations) */}
+        {/* 3 Core Conceptual Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Pillar 1: The Umbrella / Tripod Model */}
           <div className="flex flex-col p-5 rounded-2xl bg-slate-950/60 border border-purple-500/30 shadow-lg relative overflow-hidden group hover:border-purple-500/60 transition-all">
@@ -1410,19 +1871,15 @@ export const ChiralLockLab: React.FC = () => {
               />
             </h4>
 
-            {/* Visual SVG Diagram of the Tripod */}
             <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col items-center">
               <svg width="180" height="95" viewBox="0 0 180 95" className="overflow-visible">
-                {/* Fixed Vertical Shaft */}
                 <line x1="90" y1="12" x2="90" y2="45" stroke="#06b6d4" strokeWidth="3" strokeDasharray="3 2" />
                 <circle cx="90" cy="12" r="7" fill="#06b6d4" />
-                <text x="90" y="8" fill="#a5f3fc" fontSize="8" fontWeight="bold" textAnchor="middle">Top Shaft (Fixed)</text>
+                <text x="90" y="8" fill="#a5f3fc" fontSize="8" fontWeight="bold" textAnchor="middle">Anchor Shaft</text>
 
-                {/* Central Carbon */}
                 <circle cx="90" cy="45" r="9" fill="#9333ea" />
                 <text x="90" y="48" fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">C*</text>
 
-                {/* 3 Tripod Legs */}
                 <line x1="90" y1="45" x2="45" y2="82" stroke="#f43f5e" strokeWidth="2.5" />
                 <circle cx="45" cy="82" r="6" fill="#f43f5e" />
                 <text x="45" y="93" fill="#fda4af" fontSize="8" textAnchor="middle">Leg 1</text>
@@ -1435,14 +1892,13 @@ export const ChiralLockLab: React.FC = () => {
                 <circle cx="135" cy="82" r="6" fill="#f8fafc" />
                 <text x="135" y="93" fill="#ffffff" fontSize="8" textAnchor="middle">Leg 3</text>
 
-                {/* Curved Rotation Arrow */}
-                <path d="M 50 86 Q 90 98 130 86" fill="none" stroke="#c084fc" strokeWidth="1.5" strokeDasharray="3 2" markerEnd="url(#arrow)" />
+                <path d="M 50 86 Q 90 98 130 86" fill="none" stroke="#c084fc" strokeWidth="1.5" strokeDasharray="3 2" />
               </svg>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
               <BilingualText
-                en="Single covalent σ-bonds have cylindrical symmetry. Just like an umbrella or camera tripod, holding the top shaft and spinning the 3 legs by 120° breaks zero bonds. Bond angles stay 109.5°. You are merely viewing the exact same molecule from a different angle!"
+                en="Single covalent σ-bonds have cylindrical symmetry. Just like an umbrella or camera tripod, holding any anchor shaft and spinning the 3 legs by 120° breaks zero bonds. Bond angles stay 109.5°. You are merely viewing the exact same molecule from a different angle!"
                 bn="একক সমযোজী সিগমা বন্ধনের সিলিন্ড্রিক্যাল প্রতিসাম্য থাকায় মুক্ত ঘূর্ণন সম্ভব। ছাতার ডাঁট ধরে নিচের ৩টি শিকড় ১২০° ঘোরালে কোনো বন্ধন ভাঙে না। বন্ধন কোণ ১০৯.৫° অপরিবর্তিত থাকে। এটি কেবল ভিন্ন কোণ থেকে একই অণুকে দেখা!"
               />
             </p>
@@ -1467,7 +1923,6 @@ export const ChiralLockLab: React.FC = () => {
               />
             </h4>
 
-            {/* Visual SVG Diagram of Left Hand vs Right Hand */}
             <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-around">
               <div className="flex flex-col items-center">
                 <span className="text-2xl select-none">🤚</span>
@@ -1515,7 +1970,6 @@ export const ChiralLockLab: React.FC = () => {
               />
             </h4>
 
-            {/* Visual Diagram of Wedges and Dashes */}
             <div className="my-3 py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col items-center">
               <div className="text-[11px] font-mono text-slate-300 text-center space-y-1">
                 <div className="flex items-center justify-center gap-2">
@@ -1531,7 +1985,7 @@ export const ChiralLockLab: React.FC = () => {
 
             <p className="text-xs text-slate-300 leading-relaxed">
               <BilingualText
-                en="A Fischer cross is not flat. Horizontal arms reach forward like a hug, while vertical bonds curve backward. A 180° in-plane flip keeps vertical as vertical and horizontal as horizontal (allowed!). A 90° turn swaps wedges with dashes (strictly forbidden in static projections)."
+                en="A Fischer cross is not flat. Horizontal arms reach forward like a hug (wedges), while vertical bonds curve backward (dashes). A 180° in-plane flip keeps vertical as vertical and horizontal as horizontal (allowed!). A 90° turn swaps wedges with dashes (strictly forbidden in static projections)."
                 bn="ফিশার ক্রস সমতল নয়। অনুভূমিক বাহু দুটি আলিঙ্গনের মতো সামনে এগিয়ে আসে, আর উল্লম্ব বন্ধন পিছনে চলে যায়। ১৮০° ঘোরালে উল্লম্ব উল্লম্বই থাকে (অনুমোদিত!)। কিন্তু ৯০° ঘোরালে ড্যাশ ও ওয়েজ উল্টে যায় (কঠোরভাবে নিষিদ্ধ)।"
               />
             </p>
@@ -1563,10 +2017,10 @@ export const ChiralLockLab: React.FC = () => {
               <tr className="hover:bg-slate-900/50 transition-colors">
                 <td className="py-3 px-3 font-bold text-purple-300 flex items-center gap-1.5">
                   <RotateCcw className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                  <span>Rotate Single Bonds (Propeller)</span>
+                  <span>Spin Remaining Groups (Any Anchor)</span>
                 </td>
                 <td className="py-3 px-3 font-mono font-bold text-emerald-400">0 Bonds</td>
-                <td className="py-3 px-3">Free 3D rotation of 3-leg tripod around fixed top spindle</td>
+                <td className="py-3 px-3">Free 3D rotation of 3-leg tripod around chosen anchor spindle</td>
                 <td className="py-3 px-3 font-mono text-cyan-300">Even (Cyclic 3-cycle)</td>
                 <td className="py-3 px-3 font-mono font-bold text-emerald-400">Unchanged (R → R)</td>
                 <td className="py-3 px-3 font-bold text-emerald-300">Identical Homomer</td>
@@ -1575,13 +2029,25 @@ export const ChiralLockLab: React.FC = () => {
               <tr className="hover:bg-slate-900/50 transition-colors">
                 <td className="py-3 px-3 font-bold text-rose-300 flex items-center gap-1.5">
                   <Scissors className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                  <span>Swap Horizontal Groups (Chemical Saw)</span>
+                  <span>Chemical Saw / Swap Groups</span>
                 </td>
                 <td className="py-3 px-3 font-mono font-bold text-rose-400">2 Bonds Broken</td>
-                <td className="py-3 px-3">Physically detaching left & right groups, crossing over, and re-bonding</td>
+                <td className="py-3 px-3">Physically cleaving left & right sigma bonds, crossing over, and re-bonding</td>
                 <td className="py-3 px-3 font-mono text-rose-300">Odd (1 Transposition)</td>
                 <td className="py-3 px-3 font-mono font-bold text-rose-400">Inverted (R ⇄ S)</td>
                 <td className="py-3 px-3 font-bold text-rose-300">Enantiomer (Mirror Image)</td>
+              </tr>
+
+              <tr className="hover:bg-slate-900/50 transition-colors">
+                <td className="py-3 px-3 font-bold text-amber-300 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <span>Rotate Molecule 90° In Plane</span>
+                </td>
+                <td className="py-3 px-3 font-mono font-bold text-amber-400">0 Bonds (Drawing)</td>
+                <td className="py-3 px-3">Violates convention! Horizontal wedges are forced into vertical rungs</td>
+                <td className="py-3 px-3 font-mono text-amber-300">Falsifies Projection</td>
+                <td className="py-3 px-3 font-mono font-bold text-rose-400">Falsely Inverted</td>
+                <td className="py-3 px-3 font-bold text-rose-300">INVALID FISCHER VIEW</td>
               </tr>
 
               <tr className="hover:bg-slate-900/50 transition-colors">
@@ -1604,19 +2070,54 @@ export const ChiralLockLab: React.FC = () => {
 };
 
 /**
+ * Anchor status badge displayed above each group
+ */
+const AnchorBadge: React.FC<{ isAnchor: boolean; activeMode: AnimationMode }> = ({
+  isAnchor,
+  activeMode,
+}) => {
+  if (isAnchor) {
+    return (
+      <div
+        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 transition-all ${
+          activeMode === 'propeller'
+            ? 'bg-amber-500/40 text-amber-200 border border-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.6)] animate-pulse'
+            : 'bg-amber-500/20 text-amber-300 border border-amber-400/60'
+        }`}
+      >
+        <Lock className="h-2.5 w-2.5" />
+        <span>Locked</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium text-slate-400 opacity-60 hover:opacity-100 hover:text-cyan-300 transition-opacity mb-1">
+      <Unlock className="h-2 w-2" />
+      <span>Anchor</span>
+    </div>
+  );
+};
+
+/**
  * Functional Group Pill Badge rendered at the 4 rungs of the Fischer cross
  */
 const GroupPill: React.FC<{
   group: GroupItem;
+  isAnchor?: boolean;
   isDetached?: boolean;
-}> = ({ group, isDetached }) => {
+}> = ({ group, isAnchor, isDetached }) => {
   return (
     <div
-      className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 backdrop-blur-md transition-all cursor-default select-none shadow-lg ${
+      className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 backdrop-blur-md transition-all cursor-pointer select-none shadow-lg ${
         group.bgClass
-      } ${group.borderColor} ${isDetached ? 'scale-110 shadow-[0_0_24px_rgba(244,63,94,0.6)] animate-pulse' : ''}`}
+      } ${group.borderColor} ${
+        isAnchor
+          ? 'ring-2 ring-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] scale-105'
+          : 'hover:scale-105'
+      } ${isDetached ? 'scale-115 shadow-[0_0_26px_rgba(244,63,94,0.7)] animate-pulse' : ''}`}
       style={{
-        boxShadow: `0 0 16px ${group.color}40`,
+        boxShadow: isAnchor ? '0 0 20px rgba(245,158,11,0.5)' : `0 0 16px ${group.color}40`,
       }}
     >
       {/* CIP Priority Number Pill */}
