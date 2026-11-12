@@ -49,7 +49,7 @@ export interface MoleculePreset {
   initialGroups: Record<Position, GroupItem>;
 }
 
-// Preset 1: (2R)-Lactic Acid (as explicitly requested: -COOH top, -CH3 bottom, -OH right, -H left)
+// Preset 1: (2R)-Lactic Acid (-COOH top, -CH3 bottom, -OH right, -H left)
 export const LACTIC_ACID_PRESET: MoleculePreset = {
   id: 'lactic-acid',
   name: { en: '(R)-Lactic Acid', bn: '(R)-ল্যাকটিক অ্যাসিড' },
@@ -329,6 +329,17 @@ export interface StepNarrative {
   chemicalPrinciple: { en: string; bn: string };
 }
 
+// 3D Visual Depth state for an atom during 3D conical rotation
+export interface GroupVisualState {
+  x: number;
+  y: number;
+  scale: number;
+  brightness: number;
+  opacity: number;
+  zIndex: number;
+  isFront: boolean;
+}
+
 // Coordinate system for the Fischer canvas
 const CANVAS_SIZE = 360;
 const CENTER_X = 180;
@@ -343,7 +354,8 @@ const STATIC_POSITIONS: Record<Position, { x: number; y: number }> = {
 };
 
 /**
- * Calculates smooth parametric trajectory for a group moving from `from` to `to`
+ * Calculates smooth parametric trajectory for a group moving from `from` to `to`.
+ * When in propeller mode, simulates the tilted elliptical base of a 3D cone.
  */
 const interpolateTrajectory = (
   from: Position,
@@ -396,6 +408,83 @@ const interpolateTrajectory = (
   }
 };
 
+/**
+ * Computes Z-depth scaling, brightness, opacity, and z-index for each atom
+ * to simulate the 3D cone umbrella rotation in space.
+ */
+const computeGroupVisualStates = (
+  positions: Record<Position, { x: number; y: number }>,
+  isPropeller: boolean,
+  p: number,
+  anchor: Position
+): Record<Position, GroupVisualState> => {
+  const result: Record<Position, GroupVisualState> = {} as Record<Position, GroupVisualState>;
+
+  (['top', 'bottom', 'left', 'right'] as Position[]).forEach((pos) => {
+    const coords = positions[pos];
+
+    if (!isPropeller || p === 0 || p >= 0.99) {
+      result[pos] = {
+        x: coords.x,
+        y: coords.y,
+        scale: 1.0,
+        brightness: 1.0,
+        opacity: 1.0,
+        zIndex: 30,
+        isFront: true,
+      };
+      return;
+    }
+
+    if (pos === anchor) {
+      result[pos] = {
+        x: coords.x,
+        y: coords.y,
+        scale: 1.0,
+        brightness: 1.0,
+        opacity: 1.0,
+        zIndex: 35,
+        isFront: true,
+      };
+      return;
+    }
+
+    // Depth envelope (peaks at mid-spin p = 0.5)
+    const depthEnvelope = Math.sin(p * Math.PI);
+
+    // dx: horizontal projection (-1 for Left, +1 for Right)
+    // dy: vertical projection (-1 for Top, +1 for Bottom)
+    const dx = (coords.x - CENTER_X) / RADIUS;
+    const dy = (coords.y - CENTER_Y) / RADIUS;
+
+    // In a standard 3D umbrella rotation:
+    // Moving to Horizontal (Left/Right, |dx| -> 1) means coming forward towards viewer (wedges, +Z)
+    // Moving to Vertical Bottom (dy -> 1) means receding away from viewer (dashes, -Z)
+    const zNorm = (Math.abs(dx) * 1.15 - Math.max(0, dy) * 1.25) * depthEnvelope;
+
+    // Scaling: 1.22 when in front (wedged), 0.78 when in back (dashed)
+    const scale = 1.0 + zNorm * 0.22;
+    // Brightness: 1.25 in front, 0.75 in back
+    const brightness = 1.0 + zNorm * 0.25;
+    // Opacity: 1.0 in front, 0.76 in back
+    const opacity = zNorm < 0 ? 1.0 + zNorm * 0.24 : 1.0;
+    // Z-index: 40 in front, 15 in back (behind stereocenter at z-20)
+    const zIndex = zNorm > 0.05 ? 40 : zNorm < -0.1 ? 15 : 25;
+
+    result[pos] = {
+      x: coords.x,
+      y: coords.y,
+      scale: Math.max(0.75, Math.min(1.25, scale)),
+      brightness: Math.max(0.7, Math.min(1.3, brightness)),
+      opacity: Math.max(0.72, Math.min(1.0, opacity)),
+      zIndex,
+      isFront: zNorm >= 0,
+    };
+  });
+
+  return result;
+};
+
 export const ChiralLockLab: React.FC = () => {
   const [activePresetIndex, setActivePresetIndex] = useState(0);
   const activePreset = PRESETS[activePresetIndex];
@@ -405,20 +494,20 @@ export const ChiralLockLab: React.FC = () => {
     ...activePreset.initialGroups,
   }));
 
-  // NEW FEATURE 1: 2D vs 3D Reality View Toggle
+  // 2D vs 3D Reality View Toggle (Wedge/Dash)
   const [show3DReality, setShow3DReality] = useState<boolean>(true);
 
-  // NEW FEATURE 2: Multi-Anchor Selection (default: 'top')
+  // Multi-Anchor Selection (default: 'top')
   const [anchorPosition, setAnchorPosition] = useState<Position>('top');
 
-  // NEW FEATURE 3: Steric Crash State (triggered on illegal drag across center)
+  // Steric Crash State (triggered on illegal drag across center)
   const [isCrashing, setIsCrashing] = useState<boolean>(false);
   const [crashMessage, setCrashMessage] = useState<string | null>(null);
 
-  // NEW FEATURE 4: Whole Molecule Rotation Restriction (90° invalid vs 180° valid)
+  // Whole Molecule Rotation Restriction (90° invalid vs 180° valid)
   const [wholeMoleculeRotation, setWholeMoleculeRotation] = useState<number>(0);
 
-  // NEW FEATURE 5: Dynamic Action Summary Tracker
+  // Dynamic Action Summary Tracker
   const [lastActionSummary, setLastActionSummary] = useState<{
     type: 'rotation' | 'swap' | 'flip90' | 'flip180' | 'crash' | 'idle';
     title: { en: string; bn: string };
@@ -447,7 +536,8 @@ export const ChiralLockLab: React.FC = () => {
 
   const animFrameRef = useRef<number | null>(null);
   const animStartTimeRef = useRef<number | null>(null);
-  const ANIM_DURATION = 3000; // ms for a full step-by-step cycle
+  // Pedagogically tuned duration for 3D depth comprehension (1.8 seconds)
+  const ANIM_DURATION = 1800;
 
   // Initial reference configuration for comparison
   const initialCIP = useMemo(() => calculateCIP(activePreset.initialGroups), [activePreset]);
@@ -801,30 +891,30 @@ export const ChiralLockLab: React.FC = () => {
           return {
             step: 2,
             title: {
-              en: 'Step 2: Activate 3-Group Circular Orbit Base',
-              bn: 'ধাপ ২: ৩-গ্রুপের বৃত্তাকার ট্রাইপড পথ সক্রিয়করণ',
+              en: 'Step 2: Activate 3-Group 3D Conical Base Orbit',
+              bn: 'ধাপ ২: ৩-গ্রুপের ত্রিমাত্রিক শঙ্কু আকৃতির ট্রাইপড পথ সক্রিয়করণ',
             },
-            badgeText: 'ORBIT ACTIVE ⭕',
+            badgeText: '3D CONE ORBIT ⭕',
             description: {
-              en: `The remaining three substituents form a tetrahedral tripod base opposite the anchor. A circular trajectory connects them in 3D space.`,
-              bn: `নোঙ্গরের বিপরীতে থাকা বাকি ৩টি গ্রুপ একটি চতুস্তলকীয় ট্রাইপড গঠন করে। মহাশূন্যে তাদের সংযোগকারী বৃত্তাকার পথ দৃশ্যমান হয়েছে।`,
+              en: `The remaining three substituents form a tetrahedral umbrella base. Notice the perspective ellipse: horizontal points project forward (wedges), while vertical points recede backward (dashes).`,
+              bn: `নোঙ্গরের বিপরীতে থাকা বাকি ৩টি গ্রুপ একটি চতুস্তলকীয় ছাতা গঠন করে। উপবৃত্তাকার পথটি লক্ষ্য করুন: অনুভূমিক বিন্দুগুলো সামনে (ওয়েজ) এবং উল্লম্ব বিন্দুগুলো পিছনে (ড্যাশ)।`,
             },
             chemicalPrinciple: {
-              en: 'Rotating a 3-leg tripod corresponds to a cyclic permutation of 3 elements (a 3-cycle, an even permutation).',
-              bn: '৩-গ্রুপ ট্রাইপড ঘূর্ণন একটি ৩-চক্র যুগ্ম পারমিউটেশন।',
+              en: 'Rotating a 3-leg tripod sweeps a cone in 3D Euclidean space (a 3-cycle, an even permutation).',
+              bn: '৩-গ্রুপ ট্রাইপড ঘূর্ণন মহাশূন্যে একটি শঙ্কু তৈরি করে (যুগ্ম পারমিউটেশন)।',
             },
           };
         case 3:
           return {
             step: 3,
             title: {
-              en: 'Step 3: Simultaneous 120° CCW Rotation Along Track',
-              bn: 'ধাপ ৩: বৃত্তাকার পথে ১২০° ঘড়ির কাঁটার বিপরীত ঘূর্ণন',
+              en: 'Step 3: 3D Conical Rotation (Z-Depth Scaling & Brightness)',
+              bn: 'ধাপ ৩: ত্রিমাত্রিক শঙ্কু ঘূর্ণন (Z-গভীরতা স্কেলিং ও উজ্জ্বলতা পরিবর্তন)',
             },
-            badgeText: 'SPINNING 120° 🔄',
+            badgeText: '3D DEPTH ROTATION 🔄',
             description: {
-              en: `All three unanchored groups glide harmoniously along their orbit! Zero covalent bonds are broken; the molecule is merely tumbling in 3D Euclidean space.`,
-              bn: `৩টি গ্রুপ একই সাথে বৃত্তাকার ট্র্যাকে মসৃণভাবে এগিয়ে যাচ্ছে! কোনো বন্ধন ভাঙা হচ্ছে না, কেবল মহাশূন্যে ত্রিমাত্রিক আবর্তন ঘটছে।`,
+              en: `Watch the groups sweep through 3D depth! Moving to horizontal (Left/Right) scales groups UP (scale: 1.22, brighter, coming forward). Moving to vertical (Bottom) scales groups DOWN (scale: 0.78, dimmer, receding backward). ZERO bonds cleaved!`,
+              bn: `গ্রুপগুলো ৩ডি গভীরতার মধ্য দিয়ে আবর্তিত হচ্ছে! অনুভূমিক অবস্থানে এলে পরমাণু বড় ও উজ্জ্বল হয় (সামনে আসছে), আর উল্লম্ব অবস্থানে ছোট ও অনুজ্জ্বল হয় (পিছনে যাচ্ছে)। কোনো বন্ধন ভাঙছে না!`,
             },
             chemicalPrinciple: {
               en: 'Rigid body rotation in Euclidean space SO(3) preserves chiral orientation and all internal distance invariants.',
@@ -836,13 +926,13 @@ export const ChiralLockLab: React.FC = () => {
           return {
             step: 4,
             title: {
-              en: 'Step 4: Arrival at New Fischer Rungs (R/S STRICTLY PRESERVED!)',
-              bn: 'ধাপ ৪: নতুন ফিশার অবস্থানে স্থির (R/S অপরিবর্তিত ও সংরক্ষিত!)',
+              en: 'Step 4: Snap-Back to Legal 2D Fischer Rungs (R/S Invariant!)',
+              bn: 'ধাপ ৪: বৈধ ২ডি ফিশার অবস্থানে প্রত্যাবর্তন (R/S অক্ষত ও সংরক্ষিত!)',
             },
             badgeText: 'CONFIGURATION INVARIANT ✓',
             description: {
-              en: `The three groups settle into their new rungs. Although the 2D cross looks altered, the stereocenter configuration is strictly identical homomer!`,
-              bn: `গ্রুপগুলো নতুন অবস্থানে স্থিত হলো। ক্রসের রূপ দৃশ্যত বদলালেও মূল ত্রিমাত্রিক কনফিগারেশন হুবহু অভিন্ন ও সংরক্ষিত রয়েছে!`,
+              en: `The groups settle into their new rungs and snap smoothly back to uniform scale (1.0). The stereocenter configuration remains strictly identical homomer!`,
+              bn: `গ্রুপগুলো নতুন অবস্থানে স্থিত হয়ে মসৃণভাবে স্বাভাবিক স্কেলে (১.০) ফিরে এল। ক্রসের রূপ দৃশ্যত বদলালেও মূল ত্রিমাত্রিক কনফিগারেশন হুবহু অভিন্ন ও সংরক্ষিত রয়েছে!`,
             },
             chemicalPrinciple: {
               en: 'Universal Law: 3-Group Rotation around ANY Anchor = Exactly Identical Homomer. Parity is invariant.',
@@ -928,8 +1018,18 @@ export const ChiralLockLab: React.FC = () => {
     return pos;
   }, [activeMode, animProgress, anchorPosition]);
 
+  // Dynamic visual depth states (Z-Depth scaling, brightness, opacity, z-index)
+  const groupVisualStates = useMemo(() => {
+    return computeGroupVisualStates(
+      groupPositions,
+      activeMode === 'propeller',
+      animProgress,
+      anchorPosition
+    );
+  }, [groupPositions, activeMode, animProgress, anchorPosition]);
+
   return (
-    <div className="flex flex-col w-full h-full bg-[#040d1a] text-slate-100 p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-6">
+    <div className="flex flex-col w-full h-full bg-[#040d1a] text-slate-100 p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-5">
       {/* Top Banner & Molecule Preset Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/20 pb-4">
         <div>
@@ -939,7 +1039,7 @@ export const ChiralLockLab: React.FC = () => {
               <span>THE CHIRAL LOCK 2.0</span>
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              Tetrahedral Blockade & Multi-Anchor Dynamics
+              Tetrahedral Blockade & 3D Conical Depth Dynamics
             </span>
           </div>
           <h2 className="text-lg sm:text-xl font-black text-white mt-1">
@@ -950,14 +1050,29 @@ export const ChiralLockLab: React.FC = () => {
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             <BilingualText
-              en="Visual proof: Why rotating single bonds preserves (R)/(S), why 2D sliding is physically blocked, and why 90° flips are invalid."
-              bn="দৃশ্যমান প্রমাণ: কেন একক বন্ধন ঘূর্ণন (R)/(S) সংরক্ষণ করে, কেন ২ডি স্লাইড বাধাপ্রাপ্ত হয় এবং কেন ৯০° ঘূর্ণন অবৈধ।"
+              en="Visual proof: Why rotating single bonds sweeps out a 3D cone preserving (R)/(S), why 2D sliding is blocked, and why 90° flips are invalid."
+              bn="দৃশ্যমান প্রমাণ: কেন একক বন্ধন ঘূর্ণন ত্রিমাত্রিক শঙ্কু তৈরি করে (R)/(S) সংরক্ষণ করে, কেন ২ডি স্লাইড বাধাপ্রাপ্ত হয় এবং কেন ৯০° ঘূর্ণন অবৈধ।"
             />
           </p>
         </div>
 
-        {/* Preset Selector & Reset Button */}
-        <div className="flex items-center gap-2">
+        {/* Preset Selector & Action Buttons (ALWAYS VISIBLE IN FULLSCREEN) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* PRIMARY 3D REALITY TOGGLE BUTTON IN TOP HEADER */}
+          <button
+            type="button"
+            onClick={() => setShow3DReality(!show3DReality)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer shadow-sm ${
+              show3DReality
+                ? 'border-cyan-400 bg-cyan-500/25 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:border-slate-500'
+            }`}
+            title="Toggle 3D Wedges & Dashes vs 2D Fischer Cross"
+          >
+            <Box className="h-3.5 w-3.5 text-cyan-400" />
+            <span>{show3DReality ? '3D Reality (ON)' : 'Show 3D Reality'}</span>
+          </button>
+
           <div className="flex rounded-xl border border-slate-700 bg-slate-900/90 p-1 text-xs">
             {PRESETS.map((preset, idx) => (
               <button
@@ -989,7 +1104,7 @@ export const ChiralLockLab: React.FC = () => {
         </div>
       </div>
 
-      {/* NEW FEATURE 5: DYNAMIC SUMMARY & ACTION LEDGER BOX */}
+      {/* DYNAMIC SUMMARY & ACTION LEDGER BOX */}
       <div className="w-full p-4 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-950 shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -1040,7 +1155,6 @@ export const ChiralLockLab: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-            {/* View Mode Toggle Button */}
             <button
               type="button"
               onClick={() => setShow3DReality(!show3DReality)}
@@ -1113,11 +1227,11 @@ export const ChiralLockLab: React.FC = () => {
             </div>
           </div>
 
-          {/* MULTI-ANCHOR SELECTOR PILLS */}
+          {/* MULTI-ANCHOR SELECTOR PILLS & CANVAS 3D TOGGLE */}
           <div className="w-full flex items-center justify-between p-2 rounded-xl bg-slate-950/50 border border-slate-800/80 text-xs relative z-10">
             <span className="flex items-center gap-1 text-[11px] font-mono text-slate-400 font-bold">
               <Lock className="h-3 w-3 text-amber-400" />
-              <span>Click Any Group to Anchor:</span>
+              <span>Anchor:</span>
             </span>
 
             <div className="flex items-center gap-1.5">
@@ -1145,6 +1259,21 @@ export const ChiralLockLab: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Quick 3D Wedges pill right above board */}
+            <button
+              type="button"
+              onClick={() => setShow3DReality(!show3DReality)}
+              className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                show3DReality
+                  ? 'border-cyan-400/80 bg-cyan-500/20 text-cyan-200'
+                  : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+              }`}
+              title="Toggle 3D Wedges & Dashes view"
+            >
+              <Box className="h-3 w-3 text-cyan-400" />
+              <span>{show3DReality ? '3D Wedges' : '2D Cross'}</span>
+            </button>
           </div>
 
           {/* CENTRAL FISCHER PROJECTION ANIMATION BOARD */}
@@ -1157,6 +1286,21 @@ export const ChiralLockLab: React.FC = () => {
                 : 'border border-slate-800/80 bg-slate-950/40'
             }`}
           >
+            {/* TEMPORARY 3D CONICAL ROTATION TEXT OVERLAY */}
+            <AnimatePresence>
+              {activeMode === 'propeller' && animProgress > 0.05 && animProgress < 0.95 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute top-2.5 z-50 px-3.5 py-1 rounded-full bg-purple-950/95 border border-purple-400 text-purple-200 text-[10.5px] font-mono font-bold shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center gap-2 backdrop-blur-md"
+                >
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                  <span>3D Conical Rotation... (Z-Depth Umbrella)</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* INVALID 90° WARNING OVERLAY BANNER */}
             <AnimatePresence>
               {isInvalid90View && (
@@ -1370,18 +1514,28 @@ export const ChiralLockLab: React.FC = () => {
                   />
                 )}
 
-                {/* MULTI-ANCHOR ROTATION CIRCULAR ORBIT TRACE */}
+                {/* 3D CONICAL DEPTH ELLIPTICAL ORBIT BASE & UMBRELLA RIBS */}
                 {activeMode === 'propeller' && (
-                  <g className="opacity-75">
-                    <circle
+                  <g className="opacity-80">
+                    {/* Distorted flattened ellipse representing the base of the 3D cone in isometric perspective */}
+                    <ellipse
                       cx={CENTER_X}
-                      cy={CENTER_Y}
-                      r={RADIUS}
+                      cy={CENTER_Y + 16 * Math.sin(animProgress * Math.PI)}
+                      rx={RADIUS * (1 + 0.06 * Math.sin(animProgress * Math.PI))}
+                      ry={RADIUS * (1 - 0.38 * Math.sin(animProgress * Math.PI))}
                       fill="none"
                       stroke="#c084fc"
                       strokeWidth="2.5"
                       strokeDasharray="6 4"
                     />
+                    {/* 3D Umbrella cone rib generator lines */}
+                    {Math.sin(animProgress * Math.PI) > 0.08 && (
+                      <g stroke="#a855f7" strokeWidth="1.5" strokeDasharray="3 3" opacity={0.45}>
+                        <line x1={CENTER_X} y1={CENTER_Y} x2={groupPositions.left.x} y2={groupPositions.left.y} />
+                        <line x1={CENTER_X} y1={CENTER_Y} x2={groupPositions.bottom.x} y2={groupPositions.bottom.y} />
+                        <line x1={CENTER_X} y1={CENTER_Y} x2={groupPositions.right.x} y2={groupPositions.right.y} />
+                      </g>
+                    )}
                   </g>
                 )}
 
@@ -1394,10 +1548,18 @@ export const ChiralLockLab: React.FC = () => {
                 )}
               </svg>
 
-              {/* Central Stereocenter Carbon C* */}
+              {/* Central Stereocenter Carbon C* (with slight 3D perspective tilt during conical rotation) */}
               <div
                 className="absolute z-20 flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2"
-                style={{ left: CENTER_X, top: CENTER_Y }}
+                style={{
+                  left: CENTER_X,
+                  top: CENTER_Y,
+                  transform:
+                    activeMode === 'propeller' && animProgress > 0 && animProgress < 1
+                      ? `translate(-50%, -50%) perspective(500px) rotateX(${18 * Math.sin(animProgress * Math.PI)}deg) rotateY(${10 * Math.sin(animProgress * Math.PI)}deg)`
+                      : 'translate(-50%, -50%)',
+                  transition: 'transform 0.15s ease-out',
+                }}
               >
                 <div
                   className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
@@ -1421,28 +1583,48 @@ export const ChiralLockLab: React.FC = () => {
 
               {/* TOP GROUP */}
               <div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                style={{ left: groupPositions.top.x, top: groupPositions.top.y }}
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                style={{
+                  left: groupVisualStates.top.x,
+                  top: groupVisualStates.top.y,
+                  zIndex: groupVisualStates.top.zIndex,
+                }}
                 onClick={() => !isPlaying && setAnchorPosition('top')}
               >
                 <AnchorBadge isAnchor={anchorPosition === 'top'} activeMode={activeMode} />
-                <GroupPill group={groups.top} isAnchor={anchorPosition === 'top'} />
+                <GroupPill
+                  group={groups.top}
+                  isAnchor={anchorPosition === 'top'}
+                  visualState={groupVisualStates.top}
+                />
               </div>
 
               {/* BOTTOM GROUP */}
               <div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                style={{ left: groupPositions.bottom.x, top: groupPositions.bottom.y }}
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                style={{
+                  left: groupVisualStates.bottom.x,
+                  top: groupVisualStates.bottom.y,
+                  zIndex: groupVisualStates.bottom.zIndex,
+                }}
                 onClick={() => !isPlaying && setAnchorPosition('bottom')}
               >
                 <AnchorBadge isAnchor={anchorPosition === 'bottom'} activeMode={activeMode} />
-                <GroupPill group={groups.bottom} isAnchor={anchorPosition === 'bottom'} />
+                <GroupPill
+                  group={groups.bottom}
+                  isAnchor={anchorPosition === 'bottom'}
+                  visualState={groupVisualStates.bottom}
+                />
               </div>
 
               {/* LEFT GROUP (Draggable to demonstrate the Illegal Slide / Physical Blockade) */}
               <motion.div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
-                style={{ left: groupPositions.left.x, top: groupPositions.left.y }}
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
+                style={{
+                  left: groupVisualStates.left.x,
+                  top: groupVisualStates.left.y,
+                  zIndex: groupVisualStates.left.zIndex,
+                }}
                 onClick={() => !isPlaying && setAnchorPosition('left')}
                 drag={activeMode === 'idle' && !isCrashing}
                 dragConstraints={{ left: 0, right: 190, top: -30, bottom: 30 }}
@@ -1472,13 +1654,18 @@ export const ChiralLockLab: React.FC = () => {
                   group={groups.left}
                   isAnchor={anchorPosition === 'left'}
                   isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                  visualState={groupVisualStates.left}
                 />
               </motion.div>
 
               {/* RIGHT GROUP */}
               <div
-                className="absolute z-30 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                style={{ left: groupPositions.right.x, top: groupPositions.right.y }}
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                style={{
+                  left: groupVisualStates.right.x,
+                  top: groupVisualStates.right.y,
+                  zIndex: groupVisualStates.right.zIndex,
+                }}
                 onClick={() => !isPlaying && setAnchorPosition('right')}
               >
                 <AnchorBadge isAnchor={anchorPosition === 'right'} activeMode={activeMode} />
@@ -1486,6 +1673,7 @@ export const ChiralLockLab: React.FC = () => {
                   group={groups.right}
                   isAnchor={anchorPosition === 'right'}
                   isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                  visualState={groupVisualStates.right}
                 />
               </div>
             </div>
@@ -1557,7 +1745,7 @@ export const ChiralLockLab: React.FC = () => {
           {/* INTERACTION ACTION BUTTONS                                      */}
           {/* ============================================================== */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 w-full relative z-10 pt-1">
-            {/* Interaction 1: Multi-Anchor Propeller Spin */}
+            {/* Interaction 1: Multi-Anchor Propeller Spin (3D Conical Rotation) */}
             <button
               type="button"
               onClick={() => startInteraction('propeller')}
@@ -1574,9 +1762,9 @@ export const ChiralLockLab: React.FC = () => {
               <span className="text-[10px] text-amber-300 font-mono mt-1 font-semibold">
                 (Hold {groups[anchorPosition].formula} Anchor)
               </span>
-              <span className="text-[8.5px] text-emerald-400 mt-0.5 font-semibold flex items-center gap-0.5">
-                <CheckCircle2 className="h-2.5 w-2.5" />
-                <span>0 Bonds Cleaved • Identical</span>
+              <span className="text-[8.5px] text-purple-300 mt-0.5 font-semibold flex items-center gap-0.5">
+                <Sparkles className="h-2.5 w-2.5" />
+                <span>3D Conical Orbit • Identical</span>
               </span>
             </button>
 
@@ -2017,10 +2205,10 @@ export const ChiralLockLab: React.FC = () => {
               <tr className="hover:bg-slate-900/50 transition-colors">
                 <td className="py-3 px-3 font-bold text-purple-300 flex items-center gap-1.5">
                   <RotateCcw className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                  <span>Spin Remaining Groups (Any Anchor)</span>
+                  <span>Spin Remaining Groups (3D Conical)</span>
                 </td>
                 <td className="py-3 px-3 font-mono font-bold text-emerald-400">0 Bonds</td>
-                <td className="py-3 px-3">Free 3D rotation of 3-leg tripod around chosen anchor spindle</td>
+                <td className="py-3 px-3">Free 3D rotation of 3-leg tripod sweeping a cone around chosen anchor</td>
                 <td className="py-3 px-3 font-mono text-cyan-300">Even (Cyclic 3-cycle)</td>
                 <td className="py-3 px-3 font-mono font-bold text-emerald-400">Unchanged (R → R)</td>
                 <td className="py-3 px-3 font-bold text-emerald-300">Identical Homomer</td>
@@ -2100,13 +2288,19 @@ const AnchorBadge: React.FC<{ isAnchor: boolean; activeMode: AnimationMode }> = 
 };
 
 /**
- * Functional Group Pill Badge rendered at the 4 rungs of the Fischer cross
+ * Functional Group Pill Badge rendered at the 4 rungs of the Fischer cross.
+ * Supports dynamic 3D depth scaling, brightness, and opacity during conical rotation.
  */
 const GroupPill: React.FC<{
   group: GroupItem;
   isAnchor?: boolean;
   isDetached?: boolean;
-}> = ({ group, isAnchor, isDetached }) => {
+  visualState?: GroupVisualState;
+}> = ({ group, isAnchor, isDetached, visualState }) => {
+  const scale = visualState?.scale ?? 1.0;
+  const brightness = visualState?.brightness ?? 1.0;
+  const opacity = visualState?.opacity ?? 1.0;
+
   return (
     <div
       className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 backdrop-blur-md transition-all cursor-pointer select-none shadow-lg ${
@@ -2117,7 +2311,13 @@ const GroupPill: React.FC<{
           : 'hover:scale-105'
       } ${isDetached ? 'scale-115 shadow-[0_0_26px_rgba(244,63,94,0.7)] animate-pulse' : ''}`}
       style={{
-        boxShadow: isAnchor ? '0 0 20px rgba(245,158,11,0.5)' : `0 0 16px ${group.color}40`,
+        transform: `scale(${scale})`,
+        filter: `brightness(${brightness})`,
+        opacity,
+        boxShadow: isAnchor
+          ? '0 0 20px rgba(245,158,11,0.5)'
+          : `0 0 ${16 * scale}px ${group.color}${scale > 1.1 ? '80' : '40'}`,
+        transition: 'transform 0.08s ease-out, filter 0.08s ease-out, opacity 0.08s ease-out',
       }}
     >
       {/* CIP Priority Number Pill */}
