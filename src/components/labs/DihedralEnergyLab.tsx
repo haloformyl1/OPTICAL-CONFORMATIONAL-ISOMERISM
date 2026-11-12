@@ -117,7 +117,7 @@ export const DihedralEnergyLab: React.FC = () => {
       {/* Top Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 sm:p-4 backdrop-blur-md">
         {/* Molecule Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
           <label htmlFor="mol-select" className="text-xs font-bold text-slate-300">
             <BilingualText en="Molecule:" bn="অণু নির্বাচন:" />
           </label>
@@ -128,7 +128,7 @@ export const DihedralEnergyLab: React.FC = () => {
               setMolecule(e.target.value as any);
               setAngle(180);
             }}
-            className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer"
+            className="w-full min-w-0 max-w-full rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer sm:w-auto"
           >
             <option value="butane">n-Butane (CH3-CH2-CH2-CH3) [Classic]</option>
             <option value="ethane">Ethane (CH3-CH3) [12 kJ/mol Barrier]</option>

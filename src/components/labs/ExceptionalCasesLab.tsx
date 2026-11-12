@@ -46,12 +46,12 @@ export const ExceptionalCasesLab: React.FC = () => {
       }`}
     >
       {/* Top Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 sm:p-4 backdrop-blur-md">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-stretch gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-4">
+        <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <label className="text-xs font-bold text-slate-300">
             <BilingualText en="Filter Exceptions:" bn="ব্যতিক্রম ফিল্টার:" />
           </label>
-          <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-semibold">
+          <div className="flex min-w-0 overflow-x-auto rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-semibold sm:w-auto">
             <button
               type="button"
               onClick={() => { setFilterTopic('all'); setSelectedIndex(0); }}
@@ -83,7 +83,7 @@ export const ExceptionalCasesLab: React.FC = () => {
         </div>
 
         {/* View Mode & Toggles */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Mode Switcher */}
           <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
             <button
@@ -172,7 +172,7 @@ export const ExceptionalCasesLab: React.FC = () => {
       </div>
 
       {/* Main Content Layout: Left Master List + Right 3D Visualizer & Theory */}
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] flex-1 min-h-[460px] lg:min-h-[560px]">
+      <div className="grid min-h-[460px] flex-1 grid-cols-1 lg:min-h-[560px] lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* Left Column: Interactive List of Exceptional Cases */}
         <div className="border-r border-[rgba(70,227,255,0.14)] bg-[#071524]/90 overflow-y-auto max-h-[240px] lg:max-h-none p-2 space-y-1">
           {filteredCases.map((c, idx) => {
@@ -213,12 +213,12 @@ export const ExceptionalCasesLab: React.FC = () => {
         </div>
 
         {/* Right Area: Visualizer Stage + Bottom Mechanism Card */}
-        <div className="flex flex-col min-w-0 h-full">
+        <div className="flex h-full min-w-0 flex-col">
           {/* Visualizer Stage */}
-          <div className="relative flex-1 min-h-[300px] bg-gradient-to-b from-[#05111e] to-[#08182b] flex overflow-hidden">
+          <div className={`relative flex-1 bg-gradient-to-b from-[#05111e] to-[#08182b] flex flex-col overflow-hidden ${viewMode === 'split' ? 'min-h-[600px] xl:min-h-[300px] xl:flex-row' : 'min-h-[300px]'}`}>
             {/* 3D Model Stage */}
             {(viewMode === '3d' || viewMode === 'split') && (
-              <div className={`relative h-full ${viewMode === 'split' ? 'w-full lg:w-1/2 border-r border-slate-800' : 'w-full'}`}>
+              <div className={`relative min-h-[300px] min-w-0 flex-1 ${viewMode === 'split' ? 'w-full border-b border-slate-800 xl:w-1/2 xl:border-b-0 xl:border-r' : 'w-full'}`}>
                 <MolecularCanvas cameraPosition={[0, 1.2, 4.8]}>
                   <Molecule3DViewer
                     structure={activeStructure}
@@ -245,7 +245,7 @@ export const ExceptionalCasesLab: React.FC = () => {
 
             {/* 2D Mechanism Blueprint Stage */}
             {(viewMode === '2d' || viewMode === 'split') && (
-              <div className={`h-full ${viewMode === 'split' ? 'w-full lg:w-1/2' : 'w-full'} overflow-y-auto`}>
+              <div className={`min-h-[300px] min-w-0 flex-1 ${viewMode === 'split' ? 'w-full xl:w-1/2' : 'w-full'} overflow-y-auto`}>
                 <ExceptionalCase2D currentCase={currentCase} activeIsomer={activeIsomer} />
               </div>
             )}

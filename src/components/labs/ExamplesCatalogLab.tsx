@@ -101,13 +101,13 @@ export const ExamplesCatalogLab: React.FC = () => {
           </div>
 
           {/* Category Filter Pills */}
-          <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1 text-xs">
+          <div className="mb-3 flex flex-wrap gap-1.5 pb-1 text-xs lg:flex-nowrap lg:overflow-x-auto">
             {(['all', 'optical', 'conformational', 'exception'] as const).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`rounded-lg px-2.5 py-1 font-bold whitespace-nowrap transition-all cursor-pointer border-0 ${
+                className={`basis-[calc(50%-0.375rem)] rounded-lg px-2.5 py-1 text-left font-bold leading-tight whitespace-normal transition-all cursor-pointer border-0 lg:basis-auto lg:whitespace-nowrap ${
                   selectedCategory === cat
                     ? 'bg-cyan-500 text-slate-950 shadow-sm'
                     : 'bg-slate-900/80 text-slate-400 hover:text-white'

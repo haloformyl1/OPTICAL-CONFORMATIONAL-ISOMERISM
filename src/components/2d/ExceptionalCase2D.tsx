@@ -32,32 +32,32 @@ export const ExceptionalCase2D: React.FC<ExceptionalCase2DProps> = ({
     <div className="flex flex-col w-full h-full p-4 sm:p-5 bg-gradient-to-b from-[#05111e] to-[#08182b] rounded-2xl border border-[rgba(70,227,255,0.18)] shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded uppercase ${
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className={`min-w-0 max-w-full break-words text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded uppercase ${
               isOptical ? 'bg-purple-500/20 text-purple-300' : 'bg-amber-500/20 text-amber-300'
             }`}>
               2D Mechanism Blueprint
             </span>
-            <span className="text-sm font-black text-white">{currentCase.iupacName.en}</span>
+            <span className="min-w-0 break-words text-sm font-black text-white">{currentCase.iupacName.en}</span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="mt-0.5 break-words text-xs text-slate-400">
             Class 11/12 JEE/NEET Special Concept: {isOptical ? 'Chirality without asymmetric carbon center' : 'Steric locks and intramolecular H-bonding effects'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-slate-400">Current Form:</span>
-          <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold">
+          <span className="min-w-0 break-words px-2.5 py-1 rounded-lg bg-slate-900 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold">
             {activeIsomer === 'A' ? currentCase.isomerA.label : currentCase.isomerB.label}
           </span>
         </div>
       </div>
 
       {/* Main Diagram Area */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 items-center">
+      <div className="grid min-w-0 flex-1 grid-cols-1 items-center gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
         {/* SVG Mechanism Diagram Stage */}
-        <div className="relative flex items-center justify-center p-4 bg-slate-950/70 rounded-2xl border border-slate-800 min-h-[320px]">
+        <div className="relative flex min-w-0 items-center justify-center overflow-hidden p-4 bg-slate-950/70 rounded-2xl border border-slate-800 min-h-[320px]">
           {diagramType === 'allene' && (
             <svg viewBox="0 0 360 260" className="w-full max-w-[360px] select-none">
               <defs>
@@ -300,7 +300,7 @@ export const ExceptionalCase2D: React.FC<ExceptionalCase2DProps> = ({
         </div>
 
         {/* Right Info Box */}
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <div className="rounded-xl border border-cyan-500/20 bg-slate-950 p-3.5 space-y-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block flex items-center gap-1.5">
               <Flame className="h-3.5 w-3.5 text-amber-400" />

@@ -33,11 +33,11 @@ export const Home: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 sm:mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => navigate('/learn')}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(70,227,255,0.35)] transition-all hover:scale-105 cursor-pointer border-0"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(70,227,255,0.35)] transition-all hover:scale-105 cursor-pointer border-0 sm:w-auto"
             >
               <BilingualText en="Start Learning Modules" bn="শেখা শুরু করুন" />
               <ArrowRight className="h-4 w-4" />
@@ -45,7 +45,7 @@ export const Home: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/lab')}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/30 bg-[rgba(8,19,30,0.85)] px-6 py-3.5 text-sm font-bold text-cyan-300 hover:border-cyan-400/50 hover:bg-cyan-500/10 cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-500/30 bg-[rgba(8,19,30,0.85)] px-6 py-3.5 text-sm font-bold text-cyan-300 hover:border-cyan-400/50 hover:bg-cyan-500/10 cursor-pointer sm:w-auto"
             >
               <FlaskConical className="h-4 w-4 text-purple-400" />
               <BilingualText en="Open 3D Labs" bn="৩ডি ল্যাব খুলুন" />
@@ -53,7 +53,7 @@ export const Home: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/exceptions')}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-3.5 text-sm font-bold text-amber-300 hover:bg-amber-950/50 cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-3.5 text-sm font-bold text-amber-300 hover:bg-amber-950/50 cursor-pointer sm:w-auto"
             >
               <Flame className="h-4 w-4 text-amber-400" />
               <BilingualText en="20 Exceptions" bn="২০ ব্যতিক্রম" />
@@ -88,6 +88,7 @@ export const Home: React.FC = () => {
               <BilingualText
                 en="Interactive 3D Rotamer & Newman Simulator"
                 bn="ইন্টারেক্টিভ ৩ডি রোটার ও নিউম্যান সিমুলেটর"
+                isInline
               />
             }
           >

@@ -59,7 +59,7 @@ export const Navbar: React.FC = () => {
             </button>
 
             {/* Designed by Arghyadeep Roy badge */}
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-[#a9bfd2]">
+            <div className="hidden flex-wrap items-center gap-1.5 text-[10px] font-semibold text-[#a9bfd2] sm:flex sm:text-[11px]">
               <span className="rounded-md bg-cyan-950/70 px-2 py-0.5 border border-cyan-500/30 text-cyan-200">
                 Prepared by: <span className="text-white font-bold">Arghyadeep Roy</span>
               </span>
@@ -100,10 +100,12 @@ export const Navbar: React.FC = () => {
 
           {/* Controls: Language, Accessibility, Fullscreen, Menu */}
           <div className="flex items-center gap-1.5 sm:gap-2.5">
-            <LanguageSelector compact />
+            <div className="hidden sm:block">
+              <LanguageSelector compact />
+            </div>
 
             {/* Accessibility toggle button */}
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <button
                 type="button"
                 onClick={() => setAccessibilityOpen(!accessibilityOpen)}
@@ -136,7 +138,7 @@ export const Navbar: React.FC = () => {
             <button
               type="button"
               onClick={toggleAppFullscreen}
-              className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl border border-[rgba(70,227,255,0.22)] bg-[rgba(8,19,30,0.85)] text-cyan-400 hover:border-cyan-400/50 hover:bg-cyan-500/10 cursor-pointer"
+              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[rgba(70,227,255,0.22)] bg-[rgba(8,19,30,0.85)] text-cyan-400 hover:border-cyan-400/50 hover:bg-cyan-500/10 sm:flex cursor-pointer"
               title={appFullscreen ? 'Exit fullscreen' : 'Full screen'}
               aria-label="Fullscreen"
             >
@@ -187,6 +189,29 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="mt-6 pt-5 border-t border-slate-800 flex flex-col gap-3 text-xs text-slate-400">
+            <LanguageSelector />
+
+            <button
+              type="button"
+              onClick={() => setReducedMotion(!reducedMotion)}
+              aria-pressed={reducedMotion}
+              className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-3 text-left font-semibold text-slate-200 cursor-pointer"
+            >
+              <span>Reduced Motion</span>
+              <span className={`grid h-5 w-5 place-items-center rounded border ${reducedMotion ? 'border-cyan-400 bg-cyan-500 text-white' : 'border-slate-600'}`}>
+                {reducedMotion && <Check className="h-3.5 w-3.5" />}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleAppFullscreen}
+              className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 text-left font-semibold text-slate-200 cursor-pointer"
+            >
+              {appFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span>{appFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
+            </button>
+
             <div className="flex items-center justify-between">
               <span>Prepared &amp; Authored:</span>
               <span className="font-bold text-white">Arghyadeep Roy</span>

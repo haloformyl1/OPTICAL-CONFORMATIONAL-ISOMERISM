@@ -288,7 +288,7 @@ export const EnantiomerCompareLab: React.FC = () => {
               setSuperimposeProgress(0);
               setIsRotated180(false);
             }}
-            className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer max-w-sm sm:max-w-md truncate"
+            className="w-full min-w-0 max-w-full rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer sm:w-auto sm:max-w-md truncate"
           >
             {testPairs.map((p, i) => (
               <option key={i} value={i}>

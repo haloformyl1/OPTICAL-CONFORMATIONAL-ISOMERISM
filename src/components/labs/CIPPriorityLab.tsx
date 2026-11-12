@@ -27,7 +27,7 @@ export const CIPPriorityLab: React.FC = () => {
     <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
       {/* Top Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 sm:p-4 backdrop-blur-md">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
           <label htmlFor="cip-select" className="text-xs font-bold text-slate-300">
             <BilingualText en="Select Molecule:" bn="অণু নির্বাচন:" />
           </label>
@@ -38,7 +38,7 @@ export const CIPPriorityLab: React.FC = () => {
               setSelectedExampleIndex(Number(e.target.value));
               setActiveStep(4);
             }}
-            className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer"
+            className="w-full min-w-0 max-w-full rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer sm:w-auto"
           >
             {OPTICAL_EXAMPLES.slice(0, 10).map((ex, idx) => (
               <option key={ex.id} value={idx}>
@@ -49,8 +49,8 @@ export const CIPPriorityLab: React.FC = () => {
         </div>
 
         {/* View Mode Switcher: 3D, 2D Fischer, Split */}
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap rounded-xl border border-cyan-500/30 bg-slate-900 p-0.5 text-xs font-bold">
             <button
               type="button"
               onClick={() => setViewMode('3d')}

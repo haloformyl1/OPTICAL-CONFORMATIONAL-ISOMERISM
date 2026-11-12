@@ -498,7 +498,14 @@
 
   @media (max-width: 767px) {
     .page-shell, .page-shell-compact { padding-inline: 14px; padding-top: 20px; padding-bottom: 24px; }
+    .bilingual-layout { width: 100%; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+    .bilingual-pane { min-width: 0; overflow-wrap: anywhere; }
     .bilingual-pane + .bilingual-pane { border-top: 1px solid var(--border-default); border-left: 0; padding-top: 10px; padding-left: 0; }
+    .lab-frame-toolbar-title .bilingual-layout,
+    .lab-frame-toolbar-title .bilingual-pane { display: block; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; }
+    .lab-frame-toolbar-title .bilingual-pane[lang="bn"],
+    .lab-frame-toolbar-title .language-badge { display: none; }
+    .lab-frame-toolbar-title .bilingual-pane > .block { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lab-frame { min-height: 380px; border-radius: var(--radius-lg); }
     .lab-section::after { left: -8px; opacity: 0.2; }
     .lab-frame-toolbar { align-items: center; min-height: 50px; padding: 6px 8px 6px 12px; }

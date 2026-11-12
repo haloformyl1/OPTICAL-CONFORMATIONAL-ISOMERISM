@@ -78,7 +78,7 @@ export const CyclohexaneLab: React.FC = () => {
       {/* Top Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(70,227,255,0.14)] bg-[#091b2e]/90 p-3 sm:p-4 backdrop-blur-md">
         {/* Substituent Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
           <label htmlFor="sub-select" className="text-xs font-bold text-slate-300">
             <BilingualText en="Substituent at C1:" bn="C1-এ প্রতিস্থাপক:" />
           </label>
@@ -86,7 +86,7 @@ export const CyclohexaneLab: React.FC = () => {
             id="sub-select"
             value={substituent}
             onChange={(e) => setSubstituent(e.target.value as any)}
-            className="rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer"
+            className="w-full min-w-0 max-w-full rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer sm:w-auto"
           >
             <option value="H">Hydrogen (Unsubstituted C6H12)</option>
             <option value="CH3">Methyl Group (A-value = 7.3 kJ/mol)</option>

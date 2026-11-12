@@ -34,7 +34,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, descript
           <span>{eyebrow}</span>
         </div>
       )}
-      <h1 className="text-[clamp(1.5rem,4vw,2.75rem)] font-black leading-[1.15] text-white tracking-tight break-words">{title}</h1>
+      <h1 className="min-w-0 text-[clamp(1.5rem,4vw,2.75rem)] font-black leading-[1.15] text-white tracking-tight break-words">{title}</h1>
       {description && <div className="mt-2.5 sm:mt-4 max-w-[78ch] text-sm sm:text-base leading-relaxed text-slate-300 break-words">{description}</div>}
     </div>
     {aside && <div className="w-full shrink-0 sm:max-w-xs lg:w-auto mt-4 lg:mt-0">{aside}</div>}
@@ -62,7 +62,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, subtitle, i
     <header className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex items-center gap-2.5">
         {Icon && <Icon className={`h-5 w-5 shrink-0 ${accentColors[accent]}`} aria-hidden="true" />}
-        <h2 className="text-xl sm:text-2xl font-black text-white">{title}</h2>
+        <h2 className="min-w-0 break-words text-xl sm:text-2xl font-black text-white">{title}</h2>
       </div>
       {subtitle && <div className="text-sm text-slate-400 max-w-[80ch]">{subtitle}</div>}
     </header>
