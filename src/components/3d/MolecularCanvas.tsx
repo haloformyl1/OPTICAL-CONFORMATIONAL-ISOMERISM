@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Environment, Grid, OrbitControls, PerspectiveCamera } from '@react-three/drei';
@@ -12,10 +12,12 @@ interface MolecularCanvasProps {
   resetKey?: number;
   ariaLabel?: string;
   frameloop?: 'always' | 'demand' | 'never';
+  fitCameraToStage?: boolean;
   dpr?: number | [number, number];
   autoRotate?: boolean;
   autoRotateSpeed?: number;
   showAutoRotateButton?: boolean;
+  showFullscreenButton?: boolean;
 }
 
 const ResponsiveCameraRig: React.FC<{
@@ -24,8 +26,12 @@ const ResponsiveCameraRig: React.FC<{
   resetKey: number;
   autoRotate?: boolean;
   autoRotateSpeed?: number;
-}> = ({ position, target, resetKey, autoRotate = false, autoRotateSpeed = 1.0 }) => {
+  fitCameraToStage?: boolean;
+}> = ({ position, target, resetKey, autoRotate = false, autoRotateSpeed = 1.0, fitCameraToStage = false }) => {
   const { camera, size, invalidate } = useThree();
+  const lastFitCamera = useRef<THREE.Camera | null>(null);
+  const lastFitScale = useRef(1);
+  const lastBasePosition = useRef<[number, number, number] | null>(null);
 
   useEffect(() => {
     const isNarrow = size.width < 540;
@@ -37,7 +43,21 @@ const ResponsiveCameraRig: React.FC<{
       camera.updateProjectionMatrix();
       invalidate();
     }
-  }, [camera, invalidate, size.height, size.width]);
+
+    const fitScale = fitCameraToStage ? THREE.MathUtils.clamp(Math.sqrt(size.height / 560), 1, 1.35) : 1;
+    const basePositionChanged = !lastBasePosition.current || position.some((value, index) => value !== lastBasePosition.current?.[index]);
+    if (lastFitCamera.current !== camera || basePositionChanged) {
+      lastFitCamera.current = camera;
+      lastBasePosition.current = [...position];
+      lastFitScale.current = 1;
+    }
+    const scaleChange = fitScale / lastFitScale.current;
+    if (Math.abs(scaleChange - 1) > 0.001) {
+      const targetPosition = new THREE.Vector3(...target);
+      camera.position.sub(targetPosition).multiplyScalar(scaleChange).add(targetPosition);
+      lastFitScale.current = fitScale;
+    }
+  }, [camera, fitCameraToStage, invalidate, position[0], position[1], position[2], size.height, size.width, target[0], target[1], target[2]]);
 
   return (
     <>
@@ -78,6 +98,8 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
   autoRotate: autoRotateProp = false,
   autoRotateSpeed = 1.0,
   showAutoRotateButton = true,
+  showFullscreenButton = true,
+  fitCameraToStage = false,
 }) => {
   const [isRotating, setIsRotating] = useState<boolean>(autoRotateProp);
 
@@ -116,6 +138,7 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         isAutoRotating={isRotating}
         onToggleAutoRotate={showAutoRotateButton ? () => setIsRotating((prev: boolean) => !prev) : undefined}
+        showFullscreenButton={showFullscreenButton}
       >
         <color attach="background" args={['#06131d']} />
         <ResponsiveCameraRig
@@ -124,6 +147,7 @@ export const MolecularCanvas: React.FC<MolecularCanvasProps> = ({
           resetKey={resetKey}
           autoRotate={isRotating}
           autoRotateSpeed={autoRotateSpeed}
+          fitCameraToStage={fitCameraToStage}
         />
 
         <ambientLight intensity={0.7} />

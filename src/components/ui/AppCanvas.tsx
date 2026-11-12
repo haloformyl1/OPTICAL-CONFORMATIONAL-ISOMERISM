@@ -5,12 +5,13 @@ import * as THREE from 'three';
 
 interface AppCanvasProps extends CanvasProps {
   showCameraControls?: boolean;
+  showFullscreenButton?: boolean;
   isAutoRotating?: boolean;
   onToggleAutoRotate?: () => void;
 }
 
 export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
-  ({ children, onCreated, showCameraControls = true, isAutoRotating = false, onToggleAutoRotate, frameloop = 'always', ...props }, ref) => {
+  ({ children, onCreated, showCameraControls = true, showFullscreenButton = true, isAutoRotating = false, onToggleAutoRotate, frameloop = 'always', ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [camera, setCamera] = useState<THREE.Camera | null>(null);
     const [initialPos, setInitialPos] = useState<THREE.Vector3 | null>(null);
@@ -20,6 +21,11 @@ export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
     const [hasBeenVisible, setHasBeenVisible] = useState(false);
     const [isDocumentVisible, setIsDocumentVisible] = useState(true);
     const [canvasFullscreen, setCanvasFullscreen] = useState(false);
+    const [hasFrameFullscreenHost, setHasFrameFullscreenHost] = useState(false);
+
+    useEffect(() => {
+      setHasFrameFullscreenHost(Boolean(containerRef.current?.closest('.lab-frame')));
+    }, []);
 
     useEffect(() => {
       const handleFsChange = () => {
@@ -184,15 +190,17 @@ export const AppCanvas = forwardRef<HTMLCanvasElement, AppCanvasProps>(
                 />
               </button>
             )}
-            <button
-              type="button"
-              onClick={toggleCanvasFullscreen}
-              className="grid h-10 w-10 place-items-center rounded-lg border border-cyan-400/40 bg-slate-900/80 text-cyan-300 shadow-lg backdrop-blur-md transition-colors hover:bg-cyan-500/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer"
-              aria-label={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
-              title={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
-            >
-              {canvasFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-            </button>
+            {showFullscreenButton && !hasFrameFullscreenHost && (
+              <button
+                type="button"
+                onClick={toggleCanvasFullscreen}
+                className="grid h-10 w-10 place-items-center rounded-lg border border-cyan-400/40 bg-slate-900/80 text-cyan-300 shadow-lg backdrop-blur-md transition-colors hover:bg-cyan-500/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer"
+                aria-label={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
+                title={canvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen Animation'}
+              >
+                {canvasFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </button>
+            )}
           </div>
         )}
       </div>

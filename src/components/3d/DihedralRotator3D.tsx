@@ -7,12 +7,14 @@ interface DihedralRotator3DProps {
   angleDeg: number; // 0 to 360 degrees
   moleculeType: 'ethane' | 'propane' | 'butane' | 'glycol';
   viewMode: 'perspective' | 'newman';
+  showCarbonLabels?: boolean;
 }
 
 export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
   angleDeg,
   moleculeType,
   viewMode,
+  showCarbonLabels = true,
 }) => {
   const rad = (angleDeg * Math.PI) / 180;
 
@@ -109,7 +111,7 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
         <Sphere args={[0.38, 32, 32]}>
           <meshStandardMaterial color="#334155" roughness={0.3} />
         </Sphere>
-        {viewMode !== 'newman' && (
+        {viewMode !== 'newman' && showCarbonLabels && (
           <Billboard position={[0, 0.55, 0]} follow={true}>
             <Text fontSize={0.18} color="#94a3b8" outlineWidth={0.02} outlineColor="#020617">
               C1 (Front)
@@ -123,7 +125,7 @@ export const DihedralRotator3D: React.FC<DihedralRotator3DProps> = ({
         <Sphere args={[0.42, 32, 32]}>
           <meshStandardMaterial color="#1e293b" roughness={0.3} />
         </Sphere>
-        {viewMode !== 'newman' && (
+        {viewMode !== 'newman' && showCarbonLabels && (
           <Billboard position={[0, -0.6, 0]} follow={true}>
             <Text fontSize={0.18} color="#64748b" outlineWidth={0.02} outlineColor="#020617">
               C2 (Back)
