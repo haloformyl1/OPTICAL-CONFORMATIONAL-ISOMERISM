@@ -319,7 +319,7 @@ export const getPropellerTargetPos = (pos: Position, anchor: Position): Position
   }
 };
 
-export type AnimationMode = 'idle' | 'propeller' | 'saw' | 'flip180' | 'flip90' | 'rotor';
+export type AnimationMode = 'idle' | 'propeller' | 'saw' | 'flip180' | 'flip90';
 
 export interface StepNarrative {
   step: number;
@@ -534,10 +534,6 @@ export const ChiralLockLab: React.FC = () => {
   const [animProgress, setAnimProgress] = useState<number>(0); // 0.0 to 1.0
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  // Tactile 3D Rotor Crank Slider state (0 to 120 degrees)
-  const [rotorAngle, setRotorAngle] = useState<number>(0);
-  const [isRotorActive, setIsRotorActive] = useState<boolean>(false);
-
   const animFrameRef = useRef<number | null>(null);
   const animStartTimeRef = useRef<number | null>(null);
   // Pedagogically tuned duration for 3D depth comprehension (1.8 seconds)
@@ -577,8 +573,6 @@ export const ChiralLockLab: React.FC = () => {
     setCrashMessage(null);
     setActiveMode('idle');
     setAnimProgress(0);
-    setRotorAngle(0);
-    setIsRotorActive(false);
     setIsPlaying(false);
     setLastActionSummary({
       type: 'idle',
@@ -713,47 +707,6 @@ export const ChiralLockLab: React.FC = () => {
     setAnimProgress(progressMap[stepNum - 1]);
   };
 
-  // Handler for Tactile 3D Rotor Crank Slider (0 to 120 degrees)
-  const handleRotorSliderChange = (deg: number) => {
-    if (isPlaying) {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      setIsPlaying(false);
-    }
-
-    setRotorAngle(deg);
-    if (deg > 0) {
-      setIsRotorActive(true);
-      setActiveMode('rotor');
-      setAnimProgress(deg / 120);
-    } else {
-      setIsRotorActive(false);
-      setActiveMode('idle');
-      setAnimProgress(0);
-    }
-
-    // When slider hits exactly 120 degrees (one full rigid tripod cycle):
-    // Snap back to 0° and permanently update the state of the molecule
-    if (deg >= 120) {
-      setSingleBondRotationsCount((prev) => prev + 1);
-      setGroups((prev) => rotateUnanchoredCCW(prev, anchorPosition));
-      setRotorAngle(0);
-      setIsRotorActive(false);
-      setActiveMode('idle');
-      setAnimProgress(0);
-      setLastActionSummary({
-        type: 'rotation',
-        title: {
-          en: `Tactile 3D Rotor: 120° Rigid Tripod Rotation Completed`,
-          bn: `ট্যাকটাইল ৩ডি রোটার: ১২০° অনড় ট্রাইপড ঘূর্ণন সম্পন্ন`,
-        },
-        ruleText: {
-          en: 'Notice: The Carbon atom was spinning! All 3 groups moved simultaneously as a rigid unit. Angles never changed → (R)/(S) strictly invariant!',
-          bn: 'লক্ষ্য করুন: কার্বন পরমাণুটি নিজেই ঘুরছিল! তিনটি গ্রুপই একসাথে একটি অনড় কাঠামো হিসেবে সরেছে। কোণ কখনোই বদলায়নি → (R)/(S) সম্পূর্ণ সংরক্ষিত!',
-        },
-      });
-    }
-  };
-
   // Trigger Steric Crash when student attempts flat 2D drag through the core
   const triggerStericCrash = () => {
     setIsCrashing(true);
@@ -826,8 +779,6 @@ export const ChiralLockLab: React.FC = () => {
     setCrashMessage(null);
     setActiveMode('idle');
     setAnimProgress(0);
-    setRotorAngle(0);
-    setIsRotorActive(false);
     setIsPlaying(false);
     setLastActionSummary({
       type: 'idle',
@@ -916,23 +867,6 @@ export const ChiralLockLab: React.FC = () => {
             },
           };
       }
-    } else if (activeMode === 'rotor') {
-      return {
-        step: Math.min(4, Math.floor((rotorAngle / 120) * 4) + 1),
-        title: {
-          en: `Manual Crank Rotor: ${Math.round(rotorAngle)}° Rigid Tripod Rotation`,
-          bn: `ম্যানুয়াল ক্র্যাঙ্ক রোটার: ${Math.round(rotorAngle)}° অনড় ট্রাইপড ঘূর্ণন`,
-        },
-        badgeText: 'RIGID 3D ROTOR 🎡',
-        description: {
-          en: `You are manually cranking the central Carbon Rotor. Notice that all three unanchored groups move simultaneously like blades of a ceiling fan. The anchor group [${groups[anchorPosition].formula}] remains 100% stationary outside the rotor.`,
-          bn: `আপনি সরাসরি কেন্দ্রীয় কার্বন রোটারটি ঘোরাচ্ছেন। সিলিং ফ্যানের ব্লেডের মতো ৩টি গ্রুপই একসাথে নিখুঁতভাবে ঘুরছে। লকড নোঙ্গর [${groups[anchorPosition].formula}] রোটারের বাইরে সম্পূর্ণ অনড়।`,
-        },
-        chemicalPrinciple: {
-          en: 'Notice: The Carbon atom is spinning. All 3 groups move simultaneously. Angles never change.',
-          bn: 'লক্ষ্য করুন: কার্বন পরমাণুটি ঘুরছে। ৩টি গ্রুপই একসাথে নড়ছে। আন্তঃবন্ধন কোণ কখনো বদলায় না।',
-        },
-      };
     } else if (activeMode === 'propeller') {
       const anchorGrp = groups[anchorPosition];
       switch (currentStep) {
@@ -1071,8 +1005,6 @@ export const ChiralLockLab: React.FC = () => {
         pos.right = { x: leftStartX - snap, y: CENTER_Y };
         pos.left = { x: rightStartX + snap, y: CENTER_Y };
       }
-    } else if (activeMode === 'rotor') {
-      pos[anchorPosition] = STATIC_POSITIONS[anchorPosition];
     } else if (activeMode === 'propeller') {
       pos[anchorPosition] = STATIC_POSITIONS[anchorPosition];
 
@@ -1354,19 +1286,17 @@ export const ChiralLockLab: React.FC = () => {
                 : 'border border-slate-800/80 bg-slate-950/40'
             }`}
           >
-            {/* TEMPORARY 3D CONICAL ROTATION / TACTILE ROTOR TEXT OVERLAY */}
+            {/* TEMPORARY 3D CONICAL ROTATION TEXT OVERLAY */}
             <AnimatePresence>
-              {(isRotorActive || (activeMode === 'propeller' && animProgress > 0.05 && animProgress < 0.95)) && (
+              {activeMode === 'propeller' && animProgress > 0.05 && animProgress < 0.95 && (
                 <motion.div
                   initial={{ opacity: 0, y: -8, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="absolute top-2.5 z-50 px-3.5 py-1.5 rounded-full bg-purple-950/95 border border-purple-400 text-purple-200 text-[10.5px] font-mono font-bold shadow-[0_0_24px_rgba(168,85,247,0.7)] flex items-center gap-2 backdrop-blur-md"
+                  className="absolute top-2.5 z-50 px-3.5 py-1 rounded-full bg-purple-950/95 border border-purple-400 text-purple-200 text-[10.5px] font-mono font-bold shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center gap-2 backdrop-blur-md"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping" />
-                  <span>
-                    Notice: The Carbon atom is spinning. All 3 groups move simultaneously. Angles never change.
-                  </span>
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                  <span>3D Conical Rotation... (Z-Depth Umbrella)</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1618,268 +1548,139 @@ export const ChiralLockLab: React.FC = () => {
                 )}
               </svg>
 
-              {/* ============================================================== */}
-              {/* STATIONARY ANCHOR (TOP GROUP) - SITS ENTIRELY OUTSIDE ROTOR    */}
-              {/* ============================================================== */}
+              {/* Central Stereocenter Carbon C* (with slight 3D perspective tilt during conical rotation) */}
               <div
-                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer z-40"
+                className="absolute z-20 flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2"
                 style={{
-                  left: STATIC_POSITIONS.top.x,
-                  top: STATIC_POSITIONS.top.y,
+                  left: CENTER_X,
+                  top: CENTER_Y,
+                  transform:
+                    activeMode === 'propeller' && animProgress > 0 && animProgress < 1
+                      ? `translate(-50%, -50%) perspective(500px) rotateX(${18 * Math.sin(animProgress * Math.PI)}deg) rotateY(${10 * Math.sin(animProgress * Math.PI)}deg)`
+                      : 'translate(-50%, -50%)',
+                  transition: 'transform 0.15s ease-out',
                 }}
-                onClick={() => !isPlaying && !isRotorActive && setAnchorPosition('top')}
+              >
+                <div
+                  className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
+                    isCrashing
+                      ? 'bg-rose-950 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.8)] scale-110'
+                      : 'bg-slate-900 border-purple-500 shadow-[0_0_24px_rgba(168,85,247,0.45)]'
+                  }`}
+                >
+                  <span className="font-mono font-black text-sm text-purple-300">C*</span>
+                  <span className="absolute -inset-1 rounded-full border border-purple-400/40 animate-ping opacity-30 pointer-events-none" />
+                </div>
+                <span className="text-[9px] font-mono font-bold text-purple-400 mt-0.5 tracking-wider">
+                  Stereocenter
+                </span>
+                {show3DReality && (
+                  <span className="text-[8px] font-mono text-cyan-300/80 -mt-0.5">
+                    sp³ 109.5°
+                  </span>
+                )}
+              </div>
+
+              {/* TOP GROUP */}
+              <div
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                style={{
+                  left: groupVisualStates.top.x,
+                  top: groupVisualStates.top.y,
+                  zIndex: groupVisualStates.top.zIndex,
+                }}
+                onClick={() => !isPlaying && setAnchorPosition('top')}
               >
                 <AnchorBadge isAnchor={anchorPosition === 'top'} activeMode={activeMode} />
                 <GroupPill
                   group={groups.top}
                   isAnchor={anchorPosition === 'top'}
-                  visualState={{
-                    x: STATIC_POSITIONS.top.x,
-                    y: STATIC_POSITIONS.top.y,
-                    scale: 1.0,
-                    brightness: 1.0,
-                    opacity: 1.0,
-                    zIndex: 40,
-                    isFront: true,
-                  }}
+                  visualState={groupVisualStates.top}
                 />
               </div>
 
-              {/* ============================================================== */}
-              {/* RIGID 3D CARBON ROTOR PARENT CONTAINER (transform-style: 3D)   */}
-              {/* ============================================================== */}
-              {/*
-                The Carbon Rotor parent div rotates in 3D (rotateY / tilt) around
-                the central stereocenter. The three tripod groups (Left, Bottom, Right)
-                are rigidly mounted to this parent container, moving simultaneously
-                like ceiling fan blades!
-              */}
+              {/* BOTTOM GROUP */}
               <div
-                className="absolute inset-0"
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                 style={{
-                  perspective: '800px',
-                  perspectiveOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                  pointerEvents: 'none',
+                  left: groupVisualStates.bottom.x,
+                  top: groupVisualStates.bottom.y,
+                  zIndex: groupVisualStates.bottom.zIndex,
+                }}
+                onClick={() => !isPlaying && setAnchorPosition('bottom')}
+              >
+                <AnchorBadge isAnchor={anchorPosition === 'bottom'} activeMode={activeMode} />
+                <GroupPill
+                  group={groups.bottom}
+                  isAnchor={anchorPosition === 'bottom'}
+                  visualState={groupVisualStates.bottom}
+                />
+              </div>
+
+              {/* LEFT GROUP (Draggable to demonstrate the Illegal Slide / Physical Blockade) */}
+              <motion.div
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
+                style={{
+                  left: groupVisualStates.left.x,
+                  top: groupVisualStates.left.y,
+                  zIndex: groupVisualStates.left.zIndex,
+                }}
+                onClick={() => !isPlaying && setAnchorPosition('left')}
+                drag={activeMode === 'idle' && !isCrashing}
+                dragConstraints={{ left: 0, right: 190, top: -30, bottom: 30 }}
+                dragElastic={0.2}
+                dragSnapToOrigin={true}
+                onDrag={(_e, info) => {
+                  if (info.offset.x > 65 && !isCrashing && activeMode === 'idle') {
+                    triggerStericCrash();
+                  }
+                }}
+                onDragEnd={(_e, info) => {
+                  if (info.offset.x > 50 && !isCrashing && activeMode === 'idle') {
+                    triggerStericCrash();
+                  }
                 }}
               >
-                <div
-                  className="w-full h-full relative"
-                  style={{
-                    transformStyle: 'preserve-3d',
-                    transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-                    transform:
-                      isRotorActive
-                        ? `perspective(800px) rotateX(24deg) rotateY(${-rotorAngle}deg)`
-                        : activeMode === 'propeller' && animProgress > 0 && animProgress < 1
-                        ? `perspective(800px) rotateX(${24 * Math.sin(animProgress * Math.PI)}deg) rotateY(${-animProgress * 120}deg)`
-                        : 'none',
-                    transition:
-                      isRotorActive
-                        ? 'none'
-                        : activeMode === 'propeller'
-                        ? 'transform 0.05s linear'
-                        : 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  }}
-                >
-                  {/* Central Stereocenter Carbon C* (Mounted directly on Rotor Spindle) */}
-                  <div
-                    className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
-                    style={{
-                      left: CENTER_X,
-                      top: CENTER_Y,
-                      transform: 'translate(-50%, -50%) translateZ(4px)',
-                      transformStyle: 'preserve-3d',
-                      zIndex: 35,
-                    }}
-                  >
-                    <div
-                      className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
-                        isCrashing
-                          ? 'bg-rose-950 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.8)] scale-110'
-                          : 'bg-slate-900 border-purple-500 shadow-[0_0_24px_rgba(168,85,247,0.45)]'
-                      }`}
-                    >
-                      <span className="font-mono font-black text-sm text-purple-300">C*</span>
-                      <span className="absolute -inset-1 rounded-full border border-purple-400/40 animate-ping opacity-30 pointer-events-none" />
-                    </div>
-                    <span className="text-[9px] font-mono font-bold text-purple-400 mt-0.5 tracking-wider">
-                      Stereocenter
+                <div className="flex items-center gap-1 mb-0.5">
+                  <AnchorBadge isAnchor={anchorPosition === 'left'} activeMode={activeMode} />
+                  {activeMode === 'idle' && (
+                    <span className="flex items-center gap-0.5 px-1 py-0.2 rounded text-[7.5px] font-mono text-cyan-300/80 bg-cyan-950/60 border border-cyan-800/40">
+                      <Move className="h-2 w-2" />
+                      <span>Drag Me</span>
                     </span>
-                    {(show3DReality || isRotorActive) && (
-                      <span className="text-[8px] font-mono text-cyan-300/90 -mt-0.5">
-                        {isRotorActive ? 'Rotor Active' : 'sp³ 109.5°'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* BOTTOM GROUP (Tripod Leg: Points Downward & Receding) */}
-                  <div
-                    className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto"
-                    style={{
-                      left: STATIC_POSITIONS.bottom.x,
-                      top: STATIC_POSITIONS.bottom.y,
-                      transform: `translate(-50%, -50%) translateZ(${-40 * Math.cos(((rotorAngle) * Math.PI) / 180)}px)`,
-                      transformStyle: 'preserve-3d',
-                      zIndex:
-                        isRotorActive
-                          ? Math.round(30 - 15 * Math.cos((rotorAngle * Math.PI) / 180))
-                          : groupVisualStates.bottom.zIndex,
-                    }}
-                    onClick={() => !isPlaying && !isRotorActive && setAnchorPosition('bottom')}
-                  >
-                    <AnchorBadge isAnchor={anchorPosition === 'bottom'} activeMode={activeMode} />
-                    <GroupPill
-                      group={groups.bottom}
-                      isAnchor={anchorPosition === 'bottom'}
-                      visualState={
-                        isRotorActive
-                          ? {
-                              x: STATIC_POSITIONS.bottom.x,
-                              y: STATIC_POSITIONS.bottom.y,
-                              scale: 1.0 - 0.22 * Math.cos((rotorAngle * Math.PI) / 180),
-                              brightness: 1.0 - 0.2 * Math.cos((rotorAngle * Math.PI) / 180),
-                              opacity: Math.max(0.72, 1.0 - 0.22 * Math.cos((rotorAngle * Math.PI) / 180)),
-                              zIndex: 25,
-                              isFront: Math.cos((rotorAngle * Math.PI) / 180) < 0,
-                            }
-                          : groupVisualStates.bottom
-                      }
-                    />
-                  </div>
-
-                  {/* LEFT GROUP (Tripod Leg: Points Outward-Left, Wedged) */}
-                  <motion.div
-                    className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing pointer-events-auto"
-                    style={{
-                      left: STATIC_POSITIONS.left.x,
-                      top: STATIC_POSITIONS.left.y,
-                      transform: `translate(-50%, -50%) translateZ(${40 * Math.sin(((rotorAngle + 30) * Math.PI) / 180)}px)`,
-                      transformStyle: 'preserve-3d',
-                      zIndex:
-                        isRotorActive
-                          ? Math.round(30 + 15 * Math.sin(((rotorAngle + 30) * Math.PI) / 180))
-                          : groupVisualStates.left.zIndex,
-                    }}
-                    onClick={() => !isPlaying && !isRotorActive && setAnchorPosition('left')}
-                    drag={activeMode === 'idle' && !isCrashing && !isRotorActive}
-                    dragConstraints={{ left: 0, right: 190, top: -30, bottom: 30 }}
-                    dragElastic={0.2}
-                    dragSnapToOrigin={true}
-                    onDrag={(_e, info) => {
-                      if (info.offset.x > 65 && !isCrashing && activeMode === 'idle' && !isRotorActive) {
-                        triggerStericCrash();
-                      }
-                    }}
-                    onDragEnd={(_e, info) => {
-                      if (info.offset.x > 50 && !isCrashing && activeMode === 'idle' && !isRotorActive) {
-                        triggerStericCrash();
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <AnchorBadge isAnchor={anchorPosition === 'left'} activeMode={activeMode} />
-                      {activeMode === 'idle' && !isRotorActive && (
-                        <span className="flex items-center gap-0.5 px-1 py-0.2 rounded text-[7.5px] font-mono text-cyan-300/80 bg-cyan-950/60 border border-cyan-800/40">
-                          <Move className="h-2 w-2" />
-                          <span>Drag Me</span>
-                        </span>
-                      )}
-                    </div>
-                    <GroupPill
-                      group={groups.left}
-                      isAnchor={anchorPosition === 'left'}
-                      isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
-                      visualState={
-                        isRotorActive
-                          ? {
-                              x: STATIC_POSITIONS.left.x,
-                              y: STATIC_POSITIONS.left.y,
-                              scale: 1.0 + 0.2 * Math.sin(((rotorAngle + 30) * Math.PI) / 180),
-                              brightness: 1.0 + 0.2 * Math.sin(((rotorAngle + 30) * Math.PI) / 180),
-                              opacity: 1.0,
-                              zIndex: 35,
-                              isFront: true,
-                            }
-                          : groupVisualStates.left
-                      }
-                    />
-                  </motion.div>
-
-                  {/* RIGHT GROUP (Tripod Leg: Points Outward-Right, Wedged) */}
-                  <div
-                    className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto"
-                    style={{
-                      left: STATIC_POSITIONS.right.x,
-                      top: STATIC_POSITIONS.right.y,
-                      transform: `translate(-50%, -50%) translateZ(${40 * Math.sin(((150 - rotorAngle) * Math.PI) / 180)}px)`,
-                      transformStyle: 'preserve-3d',
-                      zIndex:
-                        isRotorActive
-                          ? Math.round(30 + 15 * Math.sin(((150 - rotorAngle) * Math.PI) / 180))
-                          : groupVisualStates.right.zIndex,
-                    }}
-                    onClick={() => !isPlaying && !isRotorActive && setAnchorPosition('right')}
-                  >
-                    <AnchorBadge isAnchor={anchorPosition === 'right'} activeMode={activeMode} />
-                    <GroupPill
-                      group={groups.right}
-                      isAnchor={anchorPosition === 'right'}
-                      isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
-                      visualState={
-                        isRotorActive
-                          ? {
-                              x: STATIC_POSITIONS.right.x,
-                              y: STATIC_POSITIONS.right.y,
-                              scale: 1.0 + 0.2 * Math.sin(((150 - rotorAngle) * Math.PI) / 180),
-                              brightness: 1.0 + 0.2 * Math.sin(((150 - rotorAngle) * Math.PI) / 180),
-                              opacity: 1.0,
-                              zIndex: 35,
-                              isFront: true,
-                            }
-                          : groupVisualStates.right
-                      }
-                    />
-                  </div>
+                  )}
                 </div>
+                <GroupPill
+                  group={groups.left}
+                  isAnchor={anchorPosition === 'left'}
+                  isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                  visualState={groupVisualStates.left}
+                />
+              </motion.div>
+
+              {/* RIGHT GROUP */}
+              <div
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                style={{
+                  left: groupVisualStates.right.x,
+                  top: groupVisualStates.right.y,
+                  zIndex: groupVisualStates.right.zIndex,
+                }}
+                onClick={() => !isPlaying && setAnchorPosition('right')}
+              >
+                <AnchorBadge isAnchor={anchorPosition === 'right'} activeMode={activeMode} />
+                <GroupPill
+                  group={groups.right}
+                  isAnchor={anchorPosition === 'right'}
+                  isDetached={activeMode === 'saw' && animProgress > 0.2 && animProgress < 0.8}
+                  visualState={groupVisualStates.right}
+                />
               </div>
             </div>
           </div>
 
-          {/* ANIMATION SCRUBBER SLIDER & TACTILE 3D ROTOR MANUAL CRANK */}
-          <div className="w-full p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3 relative z-10 shadow-lg">
-            {/* TACTILE 3D ROTOR MANUAL CRANK SLIDER */}
-            <div className="p-3 rounded-xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/40 shadow-inner">
-              <div className="flex items-center justify-between text-xs font-mono font-bold">
-                <span className="flex items-center gap-1.5 text-purple-300">
-                  <RotateCcw className="h-4 w-4 text-purple-400" />
-                  <span>Tactile 3D Carbon Rotor (Manual Crank):</span>
-                </span>
-                <span className="text-purple-200 font-bold px-2 py-0.5 rounded-full bg-purple-900/60 border border-purple-400/50">
-                  {Math.round(rotorAngle)}° / 120°
-                </span>
-              </div>
-
-              <div className="mt-2.5 relative flex items-center">
-                <input
-                  type="range"
-                  min="0"
-                  max="120"
-                  step="1"
-                  value={rotorAngle}
-                  onChange={(e) => handleRotorSliderChange(Number(e.target.value))}
-                  className="w-full h-3.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400 shadow-md hover:accent-purple-300 transition-all"
-                  title="Drag manual crank: scrubs the central Carbon Rotor (0° to 120°)"
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1.5 font-semibold">
-                <span>0° (2D Fischer View)</span>
-                <span className="text-purple-300">60° (Peak 3D Conical Depth)</span>
-                <span className="text-emerald-400 font-bold">120° (Snap & Cycle Done ✓)</span>
-              </div>
-            </div>
-
-            {/* Standard Animation Scrubber */}
+          {/* ANIMATION SCRUBBER SLIDER & CONTROLS */}
+          <div className="w-full p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex flex-col gap-2 relative z-10">
             <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Sliders className="h-3.5 w-3.5 text-cyan-400" />
