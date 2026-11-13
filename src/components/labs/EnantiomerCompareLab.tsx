@@ -199,10 +199,48 @@ export const EnantiomerCompareLab: React.FC = () => {
   const [superimposeProgress, setSuperimposeProgress] = useState<number>(0); // 0 = separate, 1 = overlaid
   const [isAutoSuperimposing, setIsAutoSuperimposing] = useState<boolean>(false);
   const [isRotated180, setIsRotated180] = useState<boolean>(false);
+  const [rotationAngleB, setRotationAngleB] = useState<number>(0); // Smooth animated rotation angle in degrees (0 to 180)
+  const [isAnimatingRotation, setIsAnimatingRotation] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'3d' | '2d-fischer' | 'split'>('3d');
   // By default, do not clutter 3D spheres with floating text labels; use the Top Group Legend!
   const [showLabels, setShowLabels] = useState<boolean>(false);
   const [showPriorityBadges, setShowPriorityBadges] = useState<boolean>(false);
+
+  // Smooth continuous 180° rotation animation when triggered
+  const handleToggleRotate180 = () => {
+    if (isAnimatingRotation) return;
+    const targetAngle = isRotated180 ? 0 : 180;
+    const startAngle = rotationAngleB;
+    const duration = 1200; // 1.2s smooth pedagogical rotation
+    let startTime: number | null = null;
+    setIsAnimatingRotation(true);
+
+    const step = (now: number) => {
+      if (startTime === null) startTime = now;
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // Smooth easeInOutQuad easing
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const current = startAngle + (targetAngle - startAngle) * eased;
+      setRotationAngleB(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setRotationAngleB(targetAngle);
+        setIsRotated180(targetAngle === 180);
+        setIsAnimatingRotation(false);
+      }
+    };
+
+    requestAnimationFrame(step);
+  };
+
+  // Direct manual scrubber for angle-by-angle control
+  const handleScrubRotationAngle = (newAngle: number) => {
+    setRotationAngleB(newAngle);
+    setIsRotated180(newAngle >= 90);
+  };
 
   // Smooth continuous auto-superposition animation when triggered
   React.useEffect(() => {
@@ -287,6 +325,7 @@ export const EnantiomerCompareLab: React.FC = () => {
               setSelectedPairIndex(Number(e.target.value));
               setSuperimposeProgress(0);
               setIsRotated180(false);
+              setRotationAngleB(0);
             }}
             className="w-full min-w-0 max-w-full rounded-xl border border-cyan-500/30 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-cyan-200 outline-none cursor-pointer sm:w-auto sm:max-w-md truncate"
           >
@@ -371,19 +410,31 @@ export const EnantiomerCompareLab: React.FC = () => {
             </div>
           )}
 
-          {/* 180° In-Plane Rotation Toggle Button */}
+          {/* 180° In-Plane Rotation Animated Button & Angle Badge */}
           <button
             type="button"
-            onClick={() => setIsRotated180(!isRotated180)}
+            onClick={handleToggleRotate180}
+            disabled={isAnimatingRotation}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              isRotated180
-                ? 'border-purple-400 bg-purple-500/25 text-purple-200 shadow-[0_0_12px_rgba(192,132,252,0.3)]'
+              rotationAngleB > 10
+                ? 'border-purple-400 bg-purple-500/25 text-purple-200 shadow-[0_0_14px_rgba(192,132,252,0.4)]'
                 : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:border-slate-600'
             }`}
             title="Rotate Molecule B by 180° in plane to test symmetry & superimposability"
           >
-            <RotateCw className={`h-3.5 w-3.5 transition-transform duration-500 ${isRotated180 ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
-            <span>{isRotated180 ? 'B: 180° Rotated' : 'Rotate B 180°'}</span>
+            <RotateCw
+              className={`h-3.5 w-3.5 transition-transform duration-300 ${
+                rotationAngleB > 10 ? 'text-purple-400' : 'text-slate-400'
+              }`}
+              style={{ transform: `rotate(${rotationAngleB}deg)` }}
+            />
+            <span>
+              {isAnimatingRotation
+                ? `Rotating... ${Math.round(rotationAngleB)}°`
+                : rotationAngleB > 0
+                ? `Rotated (${Math.round(rotationAngleB)}°)`
+                : 'Rotate B 180°'}
+            </span>
           </button>
 
           {/* 3D Superposition Quick Buttons */}
@@ -465,8 +516,12 @@ export const EnantiomerCompareLab: React.FC = () => {
                 pairIndex={selectedPairIndex}
                 externalProgress={superimposeProgress}
                 onProgressChange={setSuperimposeProgress}
-                externalIsRotated={isRotated180}
-                onRotateChange={setIsRotated180}
+                externalIsRotated={rotationAngleB > 90}
+                onRotateChange={(val) => {
+                  const target = val ? 180 : 0;
+                  setIsRotated180(val);
+                  setRotationAngleB(target);
+                }}
               />
             </div>
           )}
@@ -483,25 +538,65 @@ export const EnantiomerCompareLab: React.FC = () => {
                   showLabels={showLabels}
                   showPriorityBadges={showPriorityBadges}
                   isRotated180={isRotated180}
+                  rotationAngleDeg={rotationAngleB}
                 />
               </MolecularCanvas>
 
-              {/* Superposition Scrubber Track at Bottom of Canvas */}
-              <div className="absolute bottom-4 inset-x-4 max-w-sm mx-auto z-10 rounded-xl border border-slate-700/80 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-xl">
-                <div className="flex justify-between text-[11px] font-bold text-slate-300 mb-1">
-                  <span>Separated View</span>
-                  <span className="font-mono text-cyan-300">{Math.round(superimposeProgress * 100)}% Overlaid</span>
-                  <span>Full Superposition</span>
+              {/* Bottom Interactive Floating Control Console */}
+              <div className="absolute bottom-4 inset-x-4 max-w-lg mx-auto z-10 flex flex-col gap-2">
+                {/* 180° In-Plane Angle Scrubber Slider */}
+                <div className="rounded-xl border border-purple-500/40 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-xl">
+                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-300 mb-1">
+                    <span className="flex items-center gap-1 text-purple-300">
+                      <RotateCw className="h-3.5 w-3.5 text-purple-400" />
+                      <span>Rotate Molecule B:</span>
+                    </span>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/50 text-purple-300 font-extrabold shadow-sm">
+                      {Math.round(rotationAngleB)}° / 180°
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleToggleRotate180}
+                      disabled={isAnimatingRotation}
+                      className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 cursor-pointer font-bold transition-all"
+                    >
+                      {isAnimatingRotation ? 'Animating...' : rotationAngleB > 0 ? 'Reset 0°' : '▶ Animate 180°'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    step="1"
+                    value={rotationAngleB}
+                    onChange={(e) => handleScrubRotationAngle(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400"
+                    title="Scrub angle-by-angle (0° to 180°) in 3D space"
+                  />
+                  <div className="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
+                    <span>0° (Original Reflection)</span>
+                    <span className="text-purple-300/80">90° In-Plane</span>
+                    <span className="text-emerald-400 font-bold">180° (Superimposition Angle)</span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={superimposeProgress}
-                  onChange={(e) => setSuperimposeProgress(Number(e.target.value))}
-                  className="w-full accent-cyan-400 cursor-pointer"
-                />
+
+                {/* Superposition Scrubber Track */}
+                <div className="rounded-xl border border-slate-700/80 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-xl">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-300 mb-1">
+                    <span>Separated View</span>
+                    <span className="font-mono text-cyan-300">{Math.round(superimposeProgress * 100)}% Overlaid</span>
+                    <span>Full Superposition</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={superimposeProgress}
+                    onChange={(e) => setSuperimposeProgress(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -513,8 +608,12 @@ export const EnantiomerCompareLab: React.FC = () => {
                   pairIndex={selectedPairIndex}
                   externalProgress={superimposeProgress}
                   onProgressChange={setSuperimposeProgress}
-                  externalIsRotated={isRotated180}
-                  onRotateChange={setIsRotated180}
+                  externalIsRotated={rotationAngleB > 90}
+                  onRotateChange={(val) => {
+                    const target = val ? 180 : 0;
+                    setIsRotated180(val);
+                    setRotationAngleB(target);
+                  }}
                 />
               </div>
               <div className="relative rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden min-h-[350px]">
@@ -528,6 +627,7 @@ export const EnantiomerCompareLab: React.FC = () => {
                     showLabels={showLabels}
                     showPriorityBadges={showPriorityBadges}
                     isRotated180={isRotated180}
+                    rotationAngleDeg={rotationAngleB}
                   />
                 </MolecularCanvas>
               </div>

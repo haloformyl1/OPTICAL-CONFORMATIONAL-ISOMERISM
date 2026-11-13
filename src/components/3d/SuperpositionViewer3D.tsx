@@ -13,6 +13,7 @@ interface SuperpositionViewer3DProps {
   showLabels?: boolean;
   showPriorityBadges?: boolean;
   isRotated180?: boolean;
+  rotationAngleDeg?: number; // Current rotation of Molecule B around Z-axis in degrees (0 to 180)
 }
 
 export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
@@ -24,6 +25,7 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
   showLabels = true,
   showPriorityBadges = false,
   isRotated180 = false,
+  rotationAngleDeg,
 }) => {
   // Interpolate position from side-by-side to origin
   const posX_B = THREE.MathUtils.lerp(2.2, 0, superimposeProgress);
@@ -33,14 +35,20 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
   const isMatch = relationship === 'identical' || relationship === 'meso';
 
   // For identical/meso compounds, Molecule B rotates 180° around the Z-axis (in-plane rotation)
-  // to align with Molecule A. If manually toggled via isRotated180, it rotates immediately.
-  // Otherwise, during superposition it smoothly rotates from 0 to 180° as it translates into A!
-  // For enantiomers/diastereomers, it only rotates if manually toggled by user to test 180° rotation.
-  const rotZ_B = isRotated180
+  // to align with Molecule A.
+  // If rotationAngleDeg is provided, use that explicit angle (in radians).
+  // Otherwise, fallback to binary isRotated180 or auto-rotation during superposition.
+  const rotZ_B = rotationAngleDeg !== undefined
+    ? (rotationAngleDeg * Math.PI) / 180
+    : isRotated180
     ? Math.PI
     : isMatch
     ? THREE.MathUtils.lerp(0, Math.PI, superimposeProgress)
     : 0;
+
+  const currentDisplayAngle = rotationAngleDeg !== undefined
+    ? Math.round(rotationAngleDeg)
+    : Math.round((rotZ_B * 180) / Math.PI);
 
   // When identical molecules superimpose 100%, Molecule B seamlessly dissolves into Molecule A (progress >= 0.95)
   // to avoid WebGL z-fighting, leaving 1 unified crystal-clear molecule!
@@ -118,8 +126,8 @@ export const SuperpositionViewer3D: React.FC<SuperpositionViewer3DProps> = ({
               outlineColor="#020617"
               fontWeight="bold"
             >
-              {isRotated180
-                ? 'Mirror Image (180° Rotated)'
+              {currentDisplayAngle > 0
+                ? `Mirror Image (${currentDisplayAngle}° Rotated)`
                 : relationship === 'enantiomers'
                 ? 'Mirror Image (Isomer B)'
                 : 'Isomer B'}
