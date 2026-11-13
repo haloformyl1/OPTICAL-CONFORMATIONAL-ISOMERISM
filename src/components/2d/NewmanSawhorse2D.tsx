@@ -413,46 +413,118 @@ export const NewmanSawhorse2D: React.FC<NewmanSawhorse2DProps> = ({
         )}
       </div>
 
-      {/* Preset Dihedral Angles (11th/12th Grade High Yield) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-800">
-        <span className="text-xs font-bold text-slate-400">Jump to Standard Rotamers:</span>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onAngleChange?.(180)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-              normAngle === 180 ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300' : 'border-slate-700 bg-slate-800 text-slate-300'
-            }`}
-          >
-            Anti (180°)
-          </button>
-          <button
-            type="button"
-            onClick={() => onAngleChange?.(60)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-              normAngle === 60 ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300' : 'border-slate-700 bg-slate-800 text-slate-300'
-            }`}
-          >
-            Gauche (60°)
-          </button>
-          <button
-            type="button"
-            onClick={() => onAngleChange?.(120)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-              normAngle === 120 ? 'border-orange-400 bg-orange-500/20 text-orange-300' : 'border-slate-700 bg-slate-800 text-slate-300'
-            }`}
-          >
-            Part. Eclipsed (120°)
-          </button>
-          <button
-            type="button"
-            onClick={() => onAngleChange?.(0)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-              normAngle === 0 ? 'border-rose-400 bg-rose-500/20 text-rose-300' : 'border-slate-700 bg-slate-800 text-slate-300'
-            }`}
-          >
-            Fully Eclipsed (0°)
-          </button>
+      {/* Interactive Angle-by-Angle Scrubber & Preset Dihedral Angles */}
+      <div className="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-800">
+        {/* Angle-by-Angle Scrubbing Slider */}
+        <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <div className="flex items-center justify-between text-xs font-mono font-bold">
+            <span className="text-slate-300 flex items-center gap-1.5">
+              <span>Scrub Angle-by-Angle (0° - 360°):</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/50 text-cyan-300 font-extrabold text-sm shadow-sm">
+                θ = {Math.round(normAngle)}°
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onAngleChange?.(((normAngle - 5 + 360) % 360))}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 font-mono cursor-pointer"
+                  title="Rotate -5°"
+                >
+                  -5°
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAngleChange?.(((normAngle - 1 + 360) % 360))}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 font-mono cursor-pointer"
+                  title="Rotate -1°"
+                >
+                  -1°
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAngleChange?.(((normAngle + 1) % 360))}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 font-mono cursor-pointer"
+                  title="Rotate +1°"
+                >
+                  +1°
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAngleChange?.(((normAngle + 5) % 360))}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 font-mono cursor-pointer"
+                  title="Rotate +5°"
+                >
+                  +5°
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max="360"
+            step="1"
+            value={normAngle}
+            onChange={(e) => onAngleChange?.(Number(e.target.value))}
+            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+            title="Drag slider for fine angle-by-angle rotation"
+          />
+
+          <div className="flex justify-between text-[10px] font-mono text-slate-400">
+            <span>0° (Eclipsed)</span>
+            <span className="text-cyan-300">60° (Gauche)</span>
+            <span className="text-orange-300">120°</span>
+            <span className="text-emerald-300 font-bold">180° (Anti)</span>
+            <span>240°</span>
+            <span className="text-cyan-300">300° (Gauche)</span>
+            <span>360°</span>
+          </div>
+        </div>
+
+        {/* Quick Jump to Standard Rotamers */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-bold text-slate-400">Jump to Standard Rotamers:</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onAngleChange?.(180)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                normAngle === 180 ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              Anti (180°)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAngleChange?.(60)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                normAngle === 60 ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              Gauche (60°)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAngleChange?.(120)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                normAngle === 120 ? 'border-orange-400 bg-orange-500/20 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              Part. Eclipsed (120°)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAngleChange?.(0)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                normAngle === 0 ? 'border-rose-400 bg-rose-500/20 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              Fully Eclipsed (0°)
+            </button>
+          </div>
         </div>
       </div>
     </div>

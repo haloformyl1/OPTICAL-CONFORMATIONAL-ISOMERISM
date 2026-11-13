@@ -333,11 +333,49 @@ export const DihedralEnergyLab: React.FC = () => {
             </div>
           </div>
 
-          {/* Interactive Dihedral Angle Scrubber Slider */}
+          {/* Interactive Dihedral Angle Scrubber Slider with Angle-by-Angle Steppers */}
           <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-2">
             <div className="flex justify-between items-center text-xs">
               <span className="font-bold text-slate-300">Scrub Dihedral Angle (θ):</span>
-              <span className="font-mono font-bold text-cyan-400">{Math.round(angle)}°</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/40">
+                  {Math.round(angle)}°
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setAngle((prev) => (prev - 5 + 360) % 360)}
+                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono border border-slate-700 cursor-pointer"
+                    title="-5° Step"
+                  >
+                    -5°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAngle((prev) => (prev - 1 + 360) % 360)}
+                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono border border-slate-700 cursor-pointer"
+                    title="-1° Step"
+                  >
+                    -1°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAngle((prev) => (prev + 1) % 360)}
+                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono border border-slate-700 cursor-pointer"
+                    title="+1° Step"
+                  >
+                    +1°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAngle((prev) => (prev + 5) % 360)}
+                    className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono border border-slate-700 cursor-pointer"
+                    title="+5° Step"
+                  >
+                    +5°
+                  </button>
+                </div>
+              </div>
             </div>
             <input
               type="range"
