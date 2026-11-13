@@ -17,13 +17,14 @@ import { CIPPriorityLab } from '../components/labs/CIPPriorityLab';
 import { ExceptionalCasesLab } from '../components/labs/ExceptionalCasesLab';
 import { PolarimeterLab } from '../components/labs/PolarimeterLab';
 import { ChiralLockLab } from '../components/labs/ChiralLockLab';
+import { MesoCompoundFeature } from '../components/labs/MesoCompoundFeature';
 
 export const ModuleView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const moduleData = getModuleById(id || '');
   const { markModuleCompleted, completedModules } = useStore();
-  const [cipSubTab, setCipSubTab] = React.useState<'cip' | 'lock'>('lock');
+  const [cipSubTab, setCipSubTab] = React.useState<'cip' | 'lock' | 'meso'>('lock');
 
   if (!moduleData) {
     return <Navigate to="/learn" replace />;
@@ -129,9 +130,22 @@ export const ModuleView: React.FC = () => {
                   >
                     2. Step-by-Step CIP Priority Solver
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setCipSubTab('meso')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      cipSubTab === 'meso'
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    3. Meso Compound &amp; Plane of Symmetry (σ)
+                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  {cipSubTab === 'lock' ? <ChiralLockLab /> : <CIPPriorityLab />}
+                  {cipSubTab === 'lock' && <ChiralLockLab />}
+                  {cipSubTab === 'cip' && <CIPPriorityLab />}
+                  {cipSubTab === 'meso' && <MesoCompoundFeature />}
                 </div>
               </div>
             )}

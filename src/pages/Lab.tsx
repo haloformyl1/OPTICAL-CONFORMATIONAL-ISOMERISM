@@ -12,6 +12,7 @@ import { EnantiomerCompareLab } from '../components/labs/EnantiomerCompareLab';
 import { CIPPriorityLab } from '../components/labs/CIPPriorityLab';
 import { PolarimeterLab } from '../components/labs/PolarimeterLab';
 import { ChiralLockLab } from '../components/labs/ChiralLockLab';
+import { MesoCompoundFeature } from '../components/labs/MesoCompoundFeature';
 
 const labSections = [
   {
@@ -62,6 +63,13 @@ const labSections = [
     subtitle: <BilingualText en="Prove that single bond propeller rotation preserves (R)/(S) configuration, while breaking bonds (swapping groups) inverts it into an enantiomer." bn="প্রমাণ করুন যে একক বন্ধন ঘূর্ণন (R)/(S) কনফিগারেশন অপরিবর্তিত রাখে, যেখানে বন্ধন ভাঙন (গ্রুপ অদলবদল) এটিকে এন্যানশিওমারে রূপান্তরিত করে।" />,
     icon: Lock,
     content: <ChiralLockLab />,
+  },
+  {
+    id: 'meso-compound-shortcut',
+    title: <BilingualText en="Meso Compound &amp; Plane of Symmetry (σ) Shortcut" bn="মেসো যৌগ ও প্রতিসাম্য তল (σ) শর্টকাট" />,
+    subtitle: <BilingualText en="Identify superimposable mirror images instantly via the internal mirror plane without complex 3D mental rotation!" bn="কঠিন ত্রিমাত্রিক মানসিক ঘূর্ণন ছাড়াই অভ্যন্তরীণ প্রতিসাম্য তল দিয়ে নিমেষে উপরিপাতযোগ্য মেসো যৌগ শনাক্ত করুন!" />,
+    icon: Sparkles,
+    content: <MesoCompoundFeature />,
   },
 ];
 
